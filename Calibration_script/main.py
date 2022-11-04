@@ -43,23 +43,13 @@ def cut_outliers(x, y, channel):
     slopes = (y - y[0])/x
     m = np.polyfit(x[:20],y[:20],deg = 1)
 
-    #tolerance = abs(y[0] - y[-2])*0.01
-
     tolerance = abs(m[0]*x[0] - m[0]*x[-1])*0.01
-
-
 
     # Making array same size as data with only False in it
     cut = np.zeros_like(slopes, dtype=bool)
     # Set False to zero in parts where data gradient is close to zero
-    if channel == 13:
-        cut[:][np.isclose(np.gradient(y), 0, atol=tolerance)] = True
-
-    else:
-
-        cut[:][np.isclose(np.gradient(y), 0, atol=tolerance)] = True
-
-        #cut[:][(abs(m[0]*x+m[1]))-y >= tolerance] = True
+    cut[:][np.isclose(np.gradient(y), 0, atol=tolerance)] = True
+    #cut[:][(abs(m[0]*x+m[1]))-y >= tolerance] = True
 
     if x[~cut].size == 0:
         return x[~cut], y[~cut], x[cut], y[cut]
@@ -303,7 +293,7 @@ def plot_histo(x,y,title,n, length):
     #cbar.set_label('Color', rotation=270, labelpad=25)
 
 def pass_fail(residuals, l_1):
-    config_range.read("/Users/resi/PycharmProjects/pxd_teststand_software/Calibration_script/constants_range.ini")
+    config_range.read("constants_range.ini")
     Channel = []
     plot_0 = []
     plot_1 = []
@@ -427,7 +417,8 @@ def main():
 
                 # get file creation time on mac
                 stat = os.stat(path_UvsU)
-                c_timestamp = stat.st_birthtime
+                #c_timestamp = stat.st_birthtime
+                c_timestamp = stat.st_ctime
                 c_time = datetime.date.fromtimestamp(c_timestamp)
 
 
@@ -580,4 +571,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
