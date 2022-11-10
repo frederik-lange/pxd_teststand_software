@@ -49,7 +49,6 @@ def cut_outliers(x, y, channel):
     cut = np.zeros_like(slopes, dtype=bool)
     # Set False to zero in parts where data gradient is close to zero
     cut[:][np.isclose(np.gradient(y), 0, atol=tolerance)] = True
-    #cut[:][(abs(m[0]*x+m[1]))-y >= tolerance] = True
 
     if x[~cut].size == 0:
         return x[~cut], y[~cut], x[cut], y[cut]
@@ -60,19 +59,8 @@ def cut_outliers(x, y, channel):
         mean, std = np.mean(slopes[~cut]), np.std(slopes[~cut])
         #cut to  2 sigma
         cut[np.logical_or((slopes >= 2 * std + mean), (slopes <= mean - 2 * std))] = True
-            #nearest_values = np.concatenate([y[max(0, i - 5):i], y[i + 1:min(i + 6, len(y) - 1)]])
-            #mean = np.mean(nearest_values)
-            #std = np.std(nearest_values)
-
-            #if mean - std < y[i] < mean + std:
-            #    cut[i] = False
-            #else:
-            #    cut[i] = True
-
 
     return x[~cut], y[~cut],x[cut], y[cut]
-
-
 
 def linear(m,x,b):
     """
