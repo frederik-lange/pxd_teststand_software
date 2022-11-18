@@ -17,8 +17,6 @@ config_range = configparser.ConfigParser()
 config_ini.optionxform = str
 config_err.optionxform = str
 
-
-
 def prepare_data(x, y):
     """
     Excluding none and inf in data

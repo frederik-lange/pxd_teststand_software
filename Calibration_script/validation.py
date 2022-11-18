@@ -119,14 +119,12 @@ def graph_Cleaner(x,y):
         if( (np.abs((x[k]-x_med)*1.0/x_std) > 5) or (np.abs((y[k]-y_med)*1.0/y_std) > 5) ):
             print(f"Point: {k}, Value: {y[k]}, Median: {y_med}, Std: {y_std}, calculation: {np.abs((y[k]-y_med)*1.0/y_std)}")
             remove[k] = True
-
+    print(remove)
     return x[~remove], y[~remove], x[remove], y[remove]
 
 def define_range(x,y):
     ymax, ymin = np.amax(y), np.amin(y)
     range = ymax - ymin
-    print(f"Maximum and minimum:",ymax,ymin)
-    print("Range",range)
     upper_limit = ymin + 0.9*range
     lower_limit = ymin + 0.1*range
     cut1 = y>upper_limit
@@ -190,13 +188,7 @@ x_1, y_1, x_cut_1gc, y_cut_1gc = graph_Cleaner(x_1,y_1)
 x_1, y_1, x_cut_1, y_cut_1 = define_range(x_1,y_1)
 y_cut_1 = np.concatenate((y_cut_1,y_cut_1gc), axis=None)
 x_cut_1 = np.concatenate((x_cut_1,x_cut_1gc), axis=None)
-#scatter_cut(x_1,y_1,x_cut_1,y_cut_1,'$I_{out(SMU)}$ [mA]','$I_{outMon}$ [mV]',f"Channel {channel}: graphCleaner")
-
+scatter_cut(x_1,y_1,x_cut_1,y_cut_1,'$I_{out(SMU)}$ [mA]','$I_{outMon}$ [mV]',f"Channel {channel}: graphCleaner")
 """
-    NOTES
-    1st criteria:
-    calculate mean of gradients and cut small gradients
-    
-    2nd criteria:
-    PLOT RESIDUALS AND COMPARE TO STD FOR ANALYSIS
+    Note: Does not reproduce exact results for Channel 5!!!
 """
