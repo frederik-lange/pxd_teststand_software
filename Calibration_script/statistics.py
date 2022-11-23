@@ -35,10 +35,6 @@ def plot_residuals(x,r, cut, m, n, title,name):
     plt.savefig(os.path.join('../data/statistics',name))
     return None
 
-def chi_square(y,y_fit,y_err):
-    chi2 = np.sum( (y-y_fit)**2/y_err)
-    return chi2
-
 def outliers(x,y):
     # range criteria (remove saturation)
     ymax, ymin = np.amax(y), np.amin(y)
@@ -108,8 +104,6 @@ def outliers(x,y):
     print("Initial Fit:")
     print(f"a = {popt[0]} +/- {np.sqrt(pcov[0][0])}")
     print(f"b = {popt[1]} +/- {np.sqrt(pcov[1][1])}")
-    #model = ss.linregress(x[~cut],y[~cut])
-    #print(f"R^2 value: {model.rvalue ** 2}\nSlope: {model.slope}, Intercept:  {model.intercept}")
 
     # Fit with ODR
     popt_odr, perr_odr, red_chi_2 = fit.fit_odr(fit_func=lin, x=x[~help_cut], y=y[~help_cut], x_err=x_err[~help_cut], y_err=y_err[~help_cut], p0=[popt[0],popt[1]])
@@ -133,7 +127,6 @@ def outliers(x,y):
 
     print(f"Mean and median of abs(r): {np.mean(r)}, {np.median(r)}")
     plot_residuals(x,r, cut, m, n,f"Channel {channel}: Absolute values of residuals",f"Channel {channel}: Residuals")
-    popt, pcov = so.curve_fit(lin, x[~cut], y[~cut])
 
     popt, perr, red_chi_2 = fit.fit_odr(fit_func=lin, x=x[~cut], y=y[~cut], x_err=x_err[~cut], y_err=y_err[~cut], p0=[popt[0], popt[1]])
     print(popt)
@@ -145,12 +138,12 @@ def outliers(x,y):
     print(f"a = {popt[0]} +/- {np.sqrt(pcov[0][0])}")
     print(f"b = {popt[1]} +/- {np.sqrt(pcov[1][1])}")
     plot_with_fit(x[~cut],y[~cut],x[cut],y[cut],popt[0],popt[1],"","",f"Channel {channel}: Plot with fit after outlier removal")
-    print(f"ODR Chi Square: {red_chi_2}, reduced Chi Square: {red_chi_2/(len(x[~cut])-2)}")
+    print(f"ODR Chi Square: {red_chi_2}")
 
     return x[~cut], y[~cut], x[cut], y[cut], m, n
 
 ### important
-channel = 5
+channel = 13
 ###
 
 path_UvsU = f"./../data/Channel_{channel}_U_vs_U.dat"
@@ -173,5 +166,5 @@ data_IlimitvsI = main.read_data(path_IlimitvsI, columns_IlimitvsI)
 x,y,l = main.get_and_prepare(data_IvsI,'$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
 # For Voltage
 #x,y,l= main.get_and_prepare(data_UvsU, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]')
-x,y,x_cut,y_cut, m, n = outliers(x,y)
+x,y,x_cut,y_cut, m, n = outliers(x*1000.0,y)
 #validation.scatter_cut(x,y,x_cut,y_cut,"x","y",f"Channel {channel}: new")

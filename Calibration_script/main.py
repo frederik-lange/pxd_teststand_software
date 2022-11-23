@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import configparser
 import os
+import scipy.optimize as so
 from Calibration_script import fit
 from matplotlib.backends.backend_pdf import PdfPages
 import csv
@@ -31,34 +32,106 @@ def prepare_data(x, y):
     return x[~cut], y[~cut]
 
 
-def cut_outliers(x, y, channel):
+def cut_outliers(x, y, x_err, y_err, channel):
     """
     Cuts points that are to far away from the fit
     :param x: np array
     :return: cut data
     """
-    # Calculating the slope
-    slopes = (y - y[0])/x
-    m = np.polyfit(x[:20],y[:20],deg = 1)
 
-    tolerance = abs(m[0]*x[0] - m[0]*x[-1])*0.01
+    # range criteria (remove saturation)
+    ymax, ymin = np.amax(y), np.amin(y)
+    range = ymax - ymin
+    #print(f"Maximum and minimum:", ymax, ymin)
+    #print("Range", range)
+    upper_limit = ymin + 0.99 * range
+    lower_limit = ymin + 0.01 * range
+    #print(f"Upper limit: {upper_limit}, lower limit: {lower_limit}")
+    cut1 = y > upper_limit
+    cut2 = y < lower_limit
+    cut = cut1 + cut2
 
-    # Making array same size as data with only False in it
-    cut = np.zeros_like(slopes, dtype=bool)
-    # Set False to zero in parts where data gradient is close to zero
-    cut[:][np.isclose(np.gradient(y), 0, atol=tolerance)] = True
+    # use gradient of y values to fit only linear values (remove scattering values)
+    # gradient gives the "slope", twice gradient gives "curvature"
+    grad = np.gradient(y)
+    grad2 = np.gradient(grad)
+    mean_grad = np.mean(grad[~cut])
+    mean_grad2 = np.mean(grad2[~cut])
+    median_grad = np.median(grad[~cut])
+    median_grad2 = np.median(grad2[~cut])
+    help_cut1 = grad2 > 10.0
+    help_cut2 = grad2 < - 10.0
+    help_cut = help_cut1 + help_cut2 + cut
+    #print(f"Mean of grad: {mean_grad}")
+    #print(f"Median of grad: {median_grad}")
 
-    if x[~cut].size == 0:
-        return x[~cut], y[~cut], x[cut], y[cut]
-    else:
-        #for i in range(len(y)):
-        #slopes = (y[i+5] - y[i-5]) / (x[i+5] - x[i-5])
-        # calculate mean and standard derivation
-        mean, std = np.mean(slopes[~cut]), np.std(slopes[~cut])
-        #cut to  2 sigma
-        cut[np.logical_or((slopes >= 2 * std + mean), (slopes <= mean - 2 * std))] = True
+    # remove false positive points of gradient criteria
+    help_cut1 = np.abs(grad) > 1.2 * np.abs(mean_grad)
+    help_cut2 = np.abs(grad) < 0.8 * np.abs(mean_grad)
+    help_cut = help_cut + help_cut1 + help_cut2
 
-    return x[~cut], y[~cut],x[cut], y[cut]
+    # if all points were removed due to outliers, use median instead of mean
+    if x[~help_cut].size == 0:
+        print("Condition activated!")
+        help_cut1 = grad2 > 10.0
+        help_cut2 = grad2 < - 10.0
+        help_cut = help_cut1 + help_cut2 + cut
+        # remove false positive points of gradient criteria
+        help_cut1 = np.abs(grad) > 1.2 * np.abs(median_grad)
+        help_cut2 = np.abs(grad) < 0.8 * np.abs(median_grad)
+        help_cut = help_cut + help_cut1 + help_cut2
+
+    # plot gradients
+    """
+    plt.figure()
+    plt.grid()
+    plt.scatter(x[~help_cut], grad[~help_cut], color="black")
+    plt.scatter(x[help_cut], grad[help_cut], color="grey")
+    plt.title(f"First Gradient of Channel {channel}")
+    plt.savefig(f"../data/statistics/Channel {channel}: 1st Gradient")
+    plt.figure()
+    plt.grid()
+    plt.scatter(x[~help_cut], grad2[~help_cut], color="black")
+    plt.scatter(x[help_cut], grad2[help_cut], color="grey")
+    plt.title(f"Second Gradient of Channel {channel}")
+    plt.savefig(f"../data/statistics/Channel {channel}: 2nd Gradient")
+    """
+
+    # auxiliary fit
+    # Saturation got cut, considers all values along a line
+    popt, pcov = so.curve_fit(linear, x[~help_cut], y[~help_cut], sigma=y_err[~help_cut], absolute_sigma=True)
+    m, n = popt[0], popt[1]
+    #plot_with_fit(x[~help_cut], y[~help_cut], x[help_cut], y[help_cut], popt[0], popt[1], "", "", f"Channel {channel}: Plot with auxiliary fit")
+
+    # Fit with ODR
+    popt_odr, perr_odr, red_chi_2 = fit.fit_odr(fit_func=linear, x=x[~help_cut], y=y[~help_cut], x_err=x_err[~help_cut], y_err=y_err[~help_cut], p0=[popt[0], popt[1]])
+    #print("ODR Chi squared:", red_chi_2)
+    #print("ODR reduced chi squared", red_chi_2 / (len(x[~cut]) - 2))
+    m, n = popt_odr[0], popt_odr[1]
+
+    # cut outliers
+    # idea: create auxiliary fit and remove the worst values
+    r = y - (m * x + n)
+    std_r = np.std(r[~cut])
+    mean_r = np.mean(r[~cut])
+    #print(f"Standard deviation of residuals: {std_r} \n Mean: {mean_r}")
+    # use abs of residuals because res are distributed around zero -> mean is useless
+    r = np.abs(r)
+    # cut on this
+    cut1 = np.abs(r) > 2 * np.abs(np.mean(r))
+    cut = cut + cut1
+    #plot_residuals(x, r, cut, f"Channel {channel}: Absolute values of residuals", f"Channel {channel}: Residuals")
+
+    # Final Fit
+    popt_odr, perr_odr, red_chi_2 = fit.fit_odr(fit_func=linear, x=x[~cut], y=y[~cut], x_err=x_err[~cut], y_err=y_err[~cut], p0=[popt[0], popt[1]])
+    m, n = popt_odr[0], popt_odr[1]
+    print("Final Fit:")
+    #print(f"a = {popt_odr[0]} +/- {perr_odr}")
+    #print(f"b = {popt_odr[1]} +/- {perr_odr}")
+    #plot_with_fit(x[~cut], y[~cut], x[cut], y[cut], popt[0], popt[1], "", "", f"Channel {channel}: Plot with fit after outlier removal")
+    print(f"ODR Chi Square: {red_chi_2}")
+
+    return x[~cut], y[~cut], x[cut], y[cut], cut
 
 def linear(m,x,b):
     """
@@ -164,6 +237,53 @@ def residual_plots(data_x, data_y,x,y,cut_x, cut_y, m, b, n, channel, residuals)
     #else:
     #    residuals.append("Warning! Please check Channel %d." % channel+" Residual:"+data_x+" vs. " +data_y+" does not correspond to expected normal distribution.")
 
+def plot_residuals(x,r, cut, title,name):
+    """
+    ONLY USED FOR STATISTIC PLOTS
+    :param x: x values
+    :param r: residuals
+    :param cut: removed values
+    :param title: Title of the plot
+    :param name: File name
+    :return: None
+    """
+    plt.figure()
+    plt.axhline(0)
+    plt.grid()
+    plt.scatter(x[~cut], r[~cut], color='black')
+    plt.scatter(x[cut], r[cut], color='grey')
+    plt.title(title)
+    plt.savefig(os.path.join('../data/statistics',name))
+    return None
+
+def plot_with_fit(x,y,x_cut,y_cut,m,n,xlabel,ylabel,title):
+    """
+    ONLY USED FOR STATISTIC PLOTS
+    :param x:
+    :param y:
+    :param x_cut:
+    :param y_cut:
+    :param m:
+    :param n:
+    :param xlabel:
+    :param ylabel:
+    :param title:
+    :return:
+    """
+    plt.figure()
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.scatter(x, y, color='black')
+    #plt.errorbar(x,y,yerr=2.44,fmt='ok')
+    plt.scatter(x_cut, y_cut, color='grey')
+    y_fit = linear(x,m,n)
+    plt.plot(x,y_fit,'r-')
+    y_fit = linear(x_cut,m,n)
+    plt.plot(x_cut,y_fit,'r-')
+    #plt.show()
+    plt.savefig(os.path.join('../data/statistics', title))
+    return None
 
 def help_plots(data, data_x, data_y, title,n):
     x_0 = data[data_x]
@@ -407,7 +527,6 @@ def main():
                 c_timestamp = stat.st_ctime
                 c_time = datetime.date.fromtimestamp(c_timestamp)
 
-
                 # Opening I_vs_I.dat file
                 path_IvsI = os.path.join(config["calibration_data"].get("data_path"),'Channel_%d_I_vs_I' % channel + '.dat')
                 columns_IvsI = ["unknown 1", "$I_{out(SMU)}$ [mA]", "$I_{outMon}$ [mV]", "$U_{outMon}$", "StatBit","$U_{SMU}$"]
@@ -419,40 +538,46 @@ def main():
                 data_IlimitvsI = read_data(path_IlimitvsI, columns_IlimitvsI)
 
 
-
                 # 0) Plot(U Cal: Uset vs. U out)
                 x_0,y_0,l_0= get_and_prepare(data_UvsU, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]')
-                x_0, y_0,x_cut_0,y_cut_0 = cut_outliers(x_0, y_0, channel)
+                x_err_0 = np.ones_like(x_0)*3.05
                 y_err_0 = SMU_V_error(y_0)
-                m_0, b_0, m_err_0, b_err_0 = plot_and_fit(x_0, y_0, 3.05, y_err_0, x_cut_0,y_cut_0,  '$U_{DAC}$ [mV]', '$U_{out}$ [mV]', '$U_{out} vs. U_{DAC}$',1)
+                x_0, y_0,x_cut_0,y_cut_0, cut_0 = cut_outliers(x_0, y_0, x_err_0, y_err_0, channel)
+                m_0, b_0, m_err_0, b_err_0 = plot_and_fit(x_0, y_0, x_err_0[~cut_0], y_err_0[~cut_0], x_cut_0,y_cut_0,  '$U_{DAC}$ [mV]', '$U_{out}$ [mV]', '$U_{out} vs. U_{DAC}$',1)
 
                 # 1) U Cal: Uout vs. MonUreg
                 x_1,y_1, l_1= get_and_prepare(data_UvsU, '$U_{out}$ [mV]', '$U_{regulator}$ [mV]')
-                x_1, y_1,x_cut_1,y_cut_1 = cut_outliers(x_1, y_1, channel)
                 x_err_1 = SMU_V_error(x_1)
-                m_1, b_1, m_err_1, b_err_1 = plot_and_fit(x_1, y_1, x_err_1, 2.44 ,x_cut_1,y_cut_1, '$U_{out}$ [mV]', '$U_{regulator}$ [mV]', '$U_{regulator} vs. U_{out}$',2)
+                y_err_1 = np.ones_like(y_1)*2.44
+                x_1, y_1,x_cut_1,y_cut_1, cut_1 = cut_outliers(x_1, y_1, x_err_1, y_err_1, channel)
+                m_1, b_1, m_err_1, b_err_1 = plot_and_fit(x_1, y_1, x_err_1[~cut_1], y_err_1[~cut_1],x_cut_1,y_cut_1, '$U_{out}$ [mV]', '$U_{regulator}$ [mV]', '$U_{regulator} vs. U_{out}$',2)
 
                 # 2) U Cal: Uout vs. MonUload
                 x_2,y_2, l_2= get_and_prepare(data_UvsU, '$U_{out}$ [mV]', '$U_{load}$ [mV]')
-                x_2, y_2, x_cut_2,y_cut_2 = cut_outliers(x_2, y_2, channel)
                 x_err_2 = SMU_V_error(x_2)
-                m_2, b_2, m_err_2, b_err_2 = plot_and_fit(x_2, y_2, x_err_2, 2.44 , x_cut_2,y_cut_2, '$U_{out}$ [mV]', '$U_{load}$ [mV]', '$U_{load} vs. U_{out}$',3)
+                y_err_2 = np.ones_like(y_2)*2.44
+                x_2, y_2, x_cut_2,y_cut_2, cut_2 = cut_outliers(x_2, y_2, x_err_2, y_err_2, channel)
+                m_2, b_2, m_err_2, b_err_2 = plot_and_fit(x_2, y_2, x_err_2[~cut_2],y_err_2[~cut_2], x_cut_2,y_cut_2, '$U_{out}$ [mV]', '$U_{load}$ [mV]', '$U_{load} vs. U_{out}$',3)
 
                 # 3) I Cal: Iout vs. IoutMon
                 x_3,y_3, l_3 = get_and_prepare(data_IvsI, '$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
-                x_3, y_3, x_cut_3,y_cut_3= cut_outliers(x_3, y_3, channel)
                 x_err_3 = SMU_I_error(x_3, channel)
                 if channel == 13:
-                    m_3, b_3, m_err_3, b_err_3 = plot_and_fit(x_3, y_3, x_err_3, 0.00244,x_cut_3,y_cut_3,'$I_{SMU}$ [mA]', '$I_{outMon}$ [$\mu$V]', '$I_{outMON} vs. I_{SMU}$',4)
-                    #m_3 = m_3/1000
+                    y_err_3 = np.ones_like(y_3)*0.00244
                 else:
-                    m_3, b_3, m_err_3, b_err_3 = plot_and_fit(x_3, y_3, x_err_3, 2.44, x_cut_3,y_cut_3, '$I_{SMU}$ [mA]', '$I_{outMon}$ [mV]', '$I_{outMOn} vs. I_{SMU}$',4)
+                    y_err_3 = np.ones_like(y_3)*2.44
+                x_3, y_3, x_cut_3,y_cut_3, cut_3 = cut_outliers(x_3, y_3, x_err_3, y_err_3, channel)
+                if channel == 13:
+                    m_3, b_3, m_err_3, b_err_3 = plot_and_fit(x_3, y_3, x_err_3[~cut_3], y_err_3[~cut_3],x_cut_3,y_cut_3,'$I_{SMU}$ [mA]', '$I_{outMon}$ [$\mu$V]', '$I_{outMON} vs. I_{SMU}$',4)
+                else:
+                    m_3, b_3, m_err_3, b_err_3 = plot_and_fit(x_3, y_3, x_err_3[~cut_3], y_err_3[~cut_3], x_cut_3,y_cut_3, '$I_{SMU}$ [mA]', '$I_{outMon}$ [mV]', '$I_{outMOn} vs. I_{SMU}$',4)
 
                 # 4) I Cal: DAC LIMIT vs. I Measured
                 x_4,y_4,l_4 = get_and_prepare(data_IlimitvsI, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]')
-                x_4, y_4, x_cut_4,y_cut_4 = cut_outliers(x_4, y_4, channel)
+                x_err_4 = np.ones_like(x_4)*3.05
                 y_err_4= SMU_I_error(y_4, channel)
-                m_4, b_4, m_err_4, b_err_4 = plot_and_fit(x_4, y_4, 3.05, y_err_4, x_cut_4,y_cut_4, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]', '$I_{lim,SMU} vs. I_{lim,DAC}$',5)
+                x_4, y_4, x_cut_4,y_cut_4, cut_4 = cut_outliers(x_4, y_4, x_err_4, y_err_4, channel)
+                m_4, b_4, m_err_4, b_err_4 = plot_and_fit(x_4, y_4, x_err_4[~cut_4], y_err_4[~cut_4], x_cut_4,y_cut_4, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]', '$I_{lim,SMU} vs. I_{lim,DAC}$',5)
                 #if channel == 13:
                 #    m_4 = m_4 * 1000
                 #    b_4 = b_4 * 1000
