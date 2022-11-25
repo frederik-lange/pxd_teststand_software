@@ -9,7 +9,6 @@ import csv
 from matplotlib import cm
 from matplotlib.cm import ScalarMappable
 import datetime
-#from scipy.stats import shapiro
 
 config = configparser.ConfigParser()
 config_ini = configparser.ConfigParser()
@@ -71,8 +70,8 @@ def cut_outliers(x, y, x_err, y_err, channel):
     help_cut = help_cut + help_cut1 + help_cut2
 
     # if all points were removed due to outliers, use median instead of mean
-    if x[~help_cut].size == 0:
-        print("Condition activated!")
+    if x[~help_cut].size <= 1:
+        print("Outlier condition activated!")
         help_cut1 = grad2 > 10.0
         help_cut2 = grad2 < - 10.0
         help_cut = help_cut1 + help_cut2 + cut
@@ -125,11 +124,11 @@ def cut_outliers(x, y, x_err, y_err, channel):
     # Final Fit
     popt_odr, perr_odr, red_chi_2 = fit.fit_odr(fit_func=linear, x=x[~cut], y=y[~cut], x_err=x_err[~cut], y_err=y_err[~cut], p0=[popt[0], popt[1]])
     m, n = popt_odr[0], popt_odr[1]
-    print("Final Fit:")
+    #print("Final Fit:")
     #print(f"a = {popt_odr[0]} +/- {perr_odr}")
     #print(f"b = {popt_odr[1]} +/- {perr_odr}")
     #plot_with_fit(x[~cut], y[~cut], x[cut], y[cut], popt[0], popt[1], "", "", f"Channel {channel}: Plot with fit after outlier removal")
-    print(f"ODR Chi Square: {red_chi_2}")
+    #print(f"ODR Chi Square: {red_chi_2}")
 
     return x[~cut], y[~cut], x[cut], y[cut], cut
 
@@ -421,10 +420,9 @@ def pass_fail(residuals, l_1):
             l = l_1*0.6
             if int(row[1]) > l or int(row[2]) > l or int(row[3]) > l or int(row[4]) > l or int(row[5]) > l:
                 print('Warning! Please check Channel %d. To many points were deleted.'%(int(row[0])))
-                success = True
+                success = True # why like this?
             else:
                 pass
-
 
         in_range = 0
         for channel in range(24):
@@ -664,14 +662,14 @@ def main():
 
                 print('Calculations for Channel %d finished' % channel)
 
-            #with open(os.path.join(config["calibration_data"].get("data_path"),'constants.ini'), 'w') as configfile:
-
             with open(os.path.join(config["calibration_data"].get("data_path"),'constants.ini'), 'w') as configfile:
                 config_ini.write(configfile)
             with open(os.path.join(config["calibration_data"].get("data_path"),'constants_err.ini'), 'w') as configfile:
                 config_err.write(configfile)
 
 
+        #for val in config_ini['0']:
+        #    print(config_ini['0'][val])
         csvfile.close()
         print('Plotting Histogram with Number of deleted points...')
         histo_deleted_points(l_1)

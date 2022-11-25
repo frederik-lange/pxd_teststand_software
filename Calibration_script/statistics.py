@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import os
 import configparser
 
+path = '../data/ps87/10_Calibration_ps87'
+
 lin = lambda x, a, b: a*x + b
 
 def plot_with_fit(x,y,x_cut,y_cut,m,n,xlabel,ylabel,title):
@@ -22,17 +24,19 @@ def plot_with_fit(x,y,x_cut,y_cut,m,n,xlabel,ylabel,title):
     y_fit = lin(x_cut,m,n)
     plt.plot(x_cut,y_fit,'r-')
     #plt.show()
-    plt.savefig(os.path.join('../data/statistics', title))
+    plt.savefig(os.path.join(path,'statistics', title))
     return None
 
 def plot_residuals(x,r, cut, m, n, title,name):
     plt.figure()
     plt.axhline(0)
     plt.grid()
+    plt.xlabel("I_{SMU}$")
+    plt.ylabel("Residuals")
     plt.scatter(x[~cut], r[~cut], color='black')
     plt.scatter(x[cut], r[cut], color='grey')
     plt.title(title)
-    plt.savefig(os.path.join('../data/statistics',name))
+    plt.savefig(os.path.join(path,'statistics',name))
     return None
 
 def outliers(x,y):
@@ -81,16 +85,20 @@ def outliers(x,y):
     # plot gradients
     plt.figure()
     plt.grid()
+    plt.xlabel("$I_{SMU}$ [mV]")
+    plt.ylabel("$I_{OutMon}$ [mA]")
     plt.scatter(x[~help_cut], grad[~help_cut], color="black")
     plt.scatter(x[help_cut], grad[help_cut], color="grey")
     plt.title(f"First Gradient of Channel {channel}")
-    plt.savefig(f"../data/statistics/Channel {channel}: 1st Gradient")
+    plt.savefig(os.path.join(path,f"statistics/Channel {channel}: 1st Gradient"))
     plt.figure()
     plt.grid()
+    plt.xlabel("$I_{SMU}$ [mV]")
+    plt.ylabel("$I_{OutMon}$ [mA]")
     plt.scatter(x[~help_cut], grad2[~help_cut], color="black")
     plt.scatter(x[help_cut], grad2[help_cut], color="grey")
     plt.title(f"Second Gradient of Channel {channel}")
-    plt.savefig(f"../data/statistics/Channel {channel}: 2nd Gradient")
+    plt.savefig(os.path.join(path,f"statistics/Channel {channel}: 2nd Gradient"))
 
     # errors
     x_err = main.SMU_I_error(x,channel)
@@ -100,7 +108,7 @@ def outliers(x,y):
     # Saturation got cut, considers all values along a line
     popt, pcov = so.curve_fit(lin, x[~help_cut], y[~help_cut], sigma=y_err[~help_cut], absolute_sigma=True)
     m, n = popt[0], popt[1]
-    plot_with_fit(x[~help_cut],y[~help_cut],x[help_cut],y[help_cut],popt[0],popt[1],"","",f"Channel {channel}: Plot with auxiliary fit")
+    plot_with_fit(x[~help_cut],y[~help_cut],x[help_cut],y[help_cut],popt[0],popt[1],"$I_{SMU}$ [mA]","$I_{OutMon}$ [mV]",f"Channel {channel}: Plot with initial fit")
     print("Initial Fit:")
     print(f"a = {popt[0]} +/- {np.sqrt(pcov[0][0])}")
     print(f"b = {popt[1]} +/- {np.sqrt(pcov[1][1])}")
@@ -137,13 +145,13 @@ def outliers(x,y):
     print("Final Fit:")
     print(f"a = {popt[0]} +/- {np.sqrt(pcov[0][0])}")
     print(f"b = {popt[1]} +/- {np.sqrt(pcov[1][1])}")
-    plot_with_fit(x[~cut],y[~cut],x[cut],y[cut],popt[0],popt[1],"","",f"Channel {channel}: Plot with fit after outlier removal")
+    plot_with_fit(x[~cut],y[~cut],x[cut],y[cut],popt[0],popt[1],"$I_{SMU}$ [mA]","$I_{OutMon}$ [mV]",f"Channel {channel}: Plot with final fit")
     print(f"ODR Chi Square: {red_chi_2}")
 
     return x[~cut], y[~cut], x[cut], y[cut], m, n
 
 ### important
-channel = 13
+channel = 6
 ###
 
 path_UvsU = f"./../data/Channel_{channel}_U_vs_U.dat"
@@ -152,7 +160,7 @@ path_UvsU = f"./../data/Channel_{channel}_U_vs_U.dat"
 columns_UvsU = ["$U_{DAC}$ [mV]", "$U_{out}$ [mV]", "$U_{regulator}$ [mV]", "$U_{load}$ [mV]", "unknown 5","unknown 6"]
 data_UvsU = main.read_data(path_UvsU, columns_UvsU)
 
-path_IvsI = f"./../data/Channel_{channel}_I_vs_I.dat"
+path_IvsI = os.path.join(path,f"Channel_{channel}_I_vs_I.dat")
 # Test File
 #path_IvsI = f"./../data/statistics/Channel_{channel}_I_vs_I_test.dat"
 columns_IvsI = ["unknown 1", "$I_{out(SMU)}$ [mA]", "$I_{outMon}$ [mV]", "$U_{outMon}$", "StatBit","$U_{SMU}$"]
@@ -166,5 +174,5 @@ data_IlimitvsI = main.read_data(path_IlimitvsI, columns_IlimitvsI)
 x,y,l = main.get_and_prepare(data_IvsI,'$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
 # For Voltage
 #x,y,l= main.get_and_prepare(data_UvsU, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]')
-x,y,x_cut,y_cut, m, n = outliers(x*1000.0,y)
+x,y,x_cut,y_cut, m, n = outliers(x,y)
 #validation.scatter_cut(x,y,x_cut,y_cut,"x","y",f"Channel {channel}: new")
