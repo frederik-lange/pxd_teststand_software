@@ -1,13 +1,15 @@
+"""
+This program takes the calibration constants (of valid calibrations) and adds them to the constants_range.ini file
+
+"""
+
 import configparser
 
-config = configparser.ConfigParser()
 config_ini = configparser.ConfigParser()
 config_range = configparser.ConfigParser()
 config_range.optionxform = str
 
-config_range.read("/Users/resi/PycharmProjects/pxd_teststand_software/Calibration_script/constants_range.ini")
-config_ini.read("/Users/resi/Desktop/Schreibtisch - MacBook Pro von Theresa/SS2022/BA scibo/Calibrations/ps26/1_Calibration_ps26/constants.ini")
-
+config_range.read(f'./constants_range.ini')
 
 def get_range(name_gain, name_offset,channel):
 
@@ -18,8 +20,6 @@ def get_range(name_gain, name_offset,channel):
     offset_upper = float(config_range[f'{channel}'].get(name_offset + '_UPPER'))
     offset_lower = float(config_range[f'{channel}'].get(name_offset + '_LOWER'))
     offset = float(config_ini[f'{channel}'].get(name_offset))
-
-
 
     if gain > gain_upper:
         gain_upper = gain
@@ -43,12 +43,8 @@ def get_range(name_gain, name_offset,channel):
 
     return(gain_upper,gain_lower,offset_upper,offset_lower)
 
-
-
-
-
-
-def main ():
+def constants_range():
+    # Gets the range of constants from 1 .ini-file
     for channel in range(24):
         (g_u_1,g_l_1, o_u_1, o_l_1) = get_range(f'DAC_VOLTAGE_GAIN', f'DAC_VOLTAGE_OFFSET', channel)
         (g_u_2,g_l_2, o_u_2, o_l_2) = get_range(f'ADC_U_LOAD_GAIN', f'ADC_U_LOAD_OFFSET', channel)
@@ -79,6 +75,14 @@ def main ():
 
         with open('constants_range.ini', 'w+') as configfile:
             config_range.write(configfile)
+
+def main():
+    # Get the range of constants for several calibrations
+    ps = 15
+    for cal in range(1,21):
+        config_ini.read(f'../data/ps{ps}/{cal}_Calibration_ps{ps}/constants.ini')
+        constants_range()
+        print(f"Constants of calibration {cal} collected.")
 
 if __name__ == '__main__':
     main()

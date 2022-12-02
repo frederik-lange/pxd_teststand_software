@@ -1,21 +1,31 @@
+"""
+    Part of the multi calibration
+    This program can compare the variation of constants over multiple calibration runs.
+    E.g. it can display the change of constants over time
+    Output: Calibration_constants_ps.pdf and Calibration_constants_ps_var.pdf in folder 'ps(number)'
+"""
+
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import csv
 import numpy as np
 
 
-path = '/Users/resi/Desktop/Schreibtisch - MacBook Pro von Theresa/SS2022/BA scibo/Calibrations/ps26/output.csv'
-errors = '/Users/resi/Desktop/Schreibtisch - MacBook Pro von Theresa/SS2022/BA scibo/Calibrations/ps26/output_err.csv'
-path_pdf = '/Users/resi/Desktop/Schreibtisch - MacBook Pro von Theresa/SS2022/BA scibo/Calibrations/ps26/Calibrationskonstanten_pdf_ps26.pdf'
-path_var = '/Users/resi/Desktop/Schreibtisch - MacBook Pro von Theresa/SS2022/BA scibo/Calibrations/ps26/Calibrationskonstanten_var_pdf_ps26.pdf'
-#path_old = '/Users/resi/Desktop/Schreibtisch - MacBook Pro von Theresa/SS2022/BA scibo/Calibrations/ps26/Calibrationskonstanten_old_pdf_ps.pdf'
+
+ps = 15
+path = f'../data/ps{ps}/'
+values = f'../data/ps{ps}/output.csv'
+errors = f'../data/ps{ps}/output_err.csv'
+path_pdf = f'../data/ps{ps}/Calibration_constants_ps{ps}.pdf'
+path_var = f'../data/ps{ps}/Calibration_constants_ps{ps}_var.pdf'
 
 def plot_data(channel):
     i = 10 * channel + channel
-    with open(path, 'r') as csvfile:
+    with open(values, 'r') as csvfile:
         constants = csv.reader(csvfile, delimiter=',')
         rows = list(constants)
-        run = rows[0]
+        #run = rows[0] # plot against date
+        run = np.arange(0,21) # plot against calibration number
         DAC_VOLTAGE_GAIN = rows[i + 2]
         DAC_VOLTAGE_OFFSET = rows[i + 3]
         ADC_U_LOAD_GAIN = rows[i + 4]
@@ -90,7 +100,6 @@ def plot(x_data, y_data,err, y_ax, color, title, n):
 
 def plot_histo(x,y,title,color):
 
-
     plt.bar(x, y, color=color, label=title)
     plt.xlabel('Channel')
     plt.xticks(np.arange(0, 24, 1))
@@ -98,7 +107,6 @@ def plot_histo(x,y,title,color):
     plt.legend(prop={'size': 8})
 
 def plot_histo_abw(x,y,title,color):
-
 
     plt.bar(x, y, color=color, label=title)
     plt.xlabel('Channel')

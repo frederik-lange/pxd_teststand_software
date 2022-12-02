@@ -68,6 +68,7 @@ def cut_outliers(x, y, x_err, y_err, channel):
     help_cut1 = np.abs(grad) > 1.2 * np.abs(mean_grad)
     help_cut2 = np.abs(grad) < 0.8 * np.abs(mean_grad)
     help_cut = help_cut + help_cut1 + help_cut2
+    #print("y[~helpcut]:", y[~help_cut].size)
 
     # if all points were removed due to outliers, use median instead of mean
     if x[~help_cut].size <= 1:
@@ -98,6 +99,7 @@ def cut_outliers(x, y, x_err, y_err, channel):
 
     # auxiliary fit
     # Saturation got cut, considers all values along a line
+    #print("y[~helpcut]:",y[~help_cut].size)
     popt, pcov = so.curve_fit(linear, x[~help_cut], y[~help_cut], sigma=y_err[~help_cut], absolute_sigma=True)
     m, n = popt[0], popt[1]
     #plot_with_fit(x[~help_cut], y[~help_cut], x[help_cut], y[help_cut], popt[0], popt[1], "", "", f"Channel {channel}: Plot with auxiliary fit")
@@ -419,7 +421,7 @@ def pass_fail(residuals, l_1):
 
             l = l_1*0.6
             if int(row[1]) > l or int(row[2]) > l or int(row[3]) > l or int(row[4]) > l or int(row[5]) > l:
-                print('Warning! Please check Channel %d. To many points were deleted.'%(int(row[0])))
+                print('Warning! Please check Channel %d. Too many points were deleted.'%(int(row[0])))
                 success = True # why like this?
             else:
                 pass
@@ -483,7 +485,6 @@ def write_in_ini(ini,channel,m0,b0,m1,b1,m2,b2,m3,b3,m4,b4):
                                 'ADC_I_MON_OFFSET': round(b3 * 100, 0),
                                 'DAC_CURRENT_GAIN': round(m4 * 10000, 0),
                                 'DAC_CURRENT_OFFSET': round(b4 * 100, 0)}
-
 
 def main():
     # Getting path from .ini file
@@ -667,7 +668,6 @@ def main():
             with open(os.path.join(config["calibration_data"].get("data_path"),'constants_err.ini'), 'w') as configfile:
                 config_err.write(configfile)
 
-
         #for val in config_ini['0']:
         #    print(config_ini['0'][val])
         csvfile.close()
@@ -675,8 +675,6 @@ def main():
         histo_deleted_points(l_1)
         print('Checking if Calibration was successful...\n')
         pass_fail(residuals, l_1)
-
-
 
 if __name__ == '__main__':
     main()

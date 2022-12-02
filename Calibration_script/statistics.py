@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import os
 import configparser
 
-path = '../data/ps87/10_Calibration_ps87'
+path = '../data/ps_15_30112022'
 
 lin = lambda x, a, b: a*x + b
 
@@ -31,7 +31,7 @@ def plot_residuals(x,r, cut, m, n, title,name):
     plt.figure()
     plt.axhline(0)
     plt.grid()
-    plt.xlabel("I_{SMU}$")
+    plt.xlabel("$I_{SMU}$")
     plt.ylabel("Residuals")
     plt.scatter(x[~cut], r[~cut], color='black')
     plt.scatter(x[cut], r[cut], color='grey')
@@ -72,7 +72,7 @@ def outliers(x,y):
     help_cut = help_cut + help_cut1 + help_cut2
 
     # if all points were removed due to outliers, use median instead of mean
-    if x[~help_cut].size == 0:
+    if x[~help_cut].size <= 1:
         print("Condition activated!")
         help_cut1 = grad2 > 10.0
         help_cut2 = grad2 < - 10.0
@@ -151,10 +151,10 @@ def outliers(x,y):
     return x[~cut], y[~cut], x[cut], y[cut], m, n
 
 ### important
-channel = 6
+channel = 21
 ###
 
-path_UvsU = f"./../data/Channel_{channel}_U_vs_U.dat"
+path_UvsU = os.path.join(path,f'Channel_{channel}_U_vs_U.dat')
 # Test File
 #path_UvsU = f"./../data/statistics/Channel_{channel}_U_vs_U_test.dat"
 columns_UvsU = ["$U_{DAC}$ [mV]", "$U_{out}$ [mV]", "$U_{regulator}$ [mV]", "$U_{load}$ [mV]", "unknown 5","unknown 6"]
@@ -166,13 +166,16 @@ path_IvsI = os.path.join(path,f"Channel_{channel}_I_vs_I.dat")
 columns_IvsI = ["unknown 1", "$I_{out(SMU)}$ [mA]", "$I_{outMon}$ [mV]", "$U_{outMon}$", "StatBit","$U_{SMU}$"]
 data_IvsI = main.read_data(path_IvsI, columns_IvsI)
 
-path_IlimitvsI = f"./../data/Channel_{channel}_Ilimit_vs_I.dat"
+path_IlimitvsI = os.path.join(path,f'Channel_{channel}_Ilimit_vs_I.dat')
 columns_IlimitvsI = ["$I_{lim,DAC}$ [mV]", "$I_{lim,SMU}$ [mA]", "unknown 3", "unknown 4", "StatBit"]
 data_IlimitvsI = main.read_data(path_IlimitvsI, columns_IlimitvsI)
 
 # For Current
-x,y,l = main.get_and_prepare(data_IvsI,'$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
+#x,y,l = main.get_and_prepare(data_IvsI,'$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
+x,y,l = main.get_and_prepare(data_IlimitvsI,"$I_{lim,DAC}$ [mV]", "$I_{lim,SMU}$ [mA]")
 # For Voltage
 #x,y,l= main.get_and_prepare(data_UvsU, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]')
+
+plt.scatter(x,y)
+plt.show()
 x,y,x_cut,y_cut, m, n = outliers(x,y)
-#validation.scatter_cut(x,y,x_cut,y_cut,"x","y",f"Channel {channel}: new")
