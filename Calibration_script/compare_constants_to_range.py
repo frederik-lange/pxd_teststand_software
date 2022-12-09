@@ -1,14 +1,16 @@
 """
     Compares the calibration constants of a new calibration to the existing range and shows the results visually
     Results are found in the folder with the source files in 'compare_constants_to_range.pdf'
+    Note: Irrelevant!
 """
+
 import numpy as np
 import matplotlib.pyplot as plt
 import configparser
 import os
 from matplotlib.backends.backend_pdf import PdfPages
 
-path = '../data/ps_15_20221201_4/'
+path = '../data/MainProdNode47/'
 channels = np.arange(0, 24, 1)
 config_range = configparser.ConfigParser()
 config_range.read('./constants_range.ini')
@@ -21,22 +23,73 @@ gain_errs, offset_errs = np.zeros(24), np.zeros(24)
 upper_gains, lower_gains = np.zeros(24), np.zeros(24)
 upper_offsets, lower_offsets = np.zeros(24), np.zeros(24)
 
-def plot_constants(pdf, channel, values, errors, range_upper, range_lower,title):
+def plot_gains(pdf, channel, values, errors, range_upper, range_lower,title):
     plt.subplots()
     plt.grid()
-    plt.xlim(0,24)
-    plt.xticks()
+    plt.xlim(-1,24)
+    plt.xticks(channels)
     plt.xlabel('Channel')
-    plt.ylabel('Values normalized to lower range')
-    norm_values = values / range_lower
+    plt.ylabel('Gains normalized to lower range')
+    norm_values = np.zeros_like(values)
+    for v in range(len(values)):
+        if range_upper[v] > 0:
+            norm_values[v] = range_upper[v]/range_lower[v]
+        else:
+            norm_values[v] = np.abs(range_lower[v]/range_upper[v])
     for i in channels:
         if i == 0:
-            plt.bar(i,bottom=1,height=range_upper[i]/range_lower[i]-1,alpha=0.5, color='r',label='previous range')
+            plt.bar(i, bottom=1, height=norm_values[i]-1, alpha=0.5, color='g',label='previous range')
         else:
-            plt.bar(i, bottom=1, height=range_upper[i] / range_lower[i] - 1, alpha=0.5, color='r')
-        print(f"lower: {range_lower[i]}, upper: {range_upper[i]}")
-    plt.scatter(channels,norm_values,color='b', label='new data points')
+            plt.bar(i, bottom=1, height=norm_values[i]-1, alpha=0.5, color='g')
+    inrange = np.zeros_like(values,dtype=bool)
+    deviation = np.zeros_like(values)
+    for i in range(len(norm_values)):
+        if (values[i] < range_upper[i] and values[i] > range_lower[i]):
+            inrange[i] = True
+        elif values[i] > range_upper[i]:
+            deviation[i] = np.abs((values[i] - range_upper[i]) / range_upper[i])
+        elif values[i] < range_lower[i]:
+            deviation[i] = np.abs((values[i] - range_lower[i]) / range_lower[i])
+    for d in deviation:
+        if d!=0:
+            print(f'Deviation: {d:.2%}')
+    #print(inrange)
+    plt.scatter(channels[inrange], norm_values[inrange],color='green', label='new constants in range')
+    plt.scatter(channels[~inrange], norm_values[~inrange], color='red', label='new constants out of range')
     #plt.errorbar(channels,norm_values,yerr=errors/range_lower,fmt='ob')
+    plt.title(title)
+    plt.legend()
+    pdf.savefig()
+    plt.close()
+    return None
+
+def plot_offsets(pdf,channel,values,errors,range_upper,range_lower,title):
+    plt.subplots()
+    plt.grid()
+    plt.xlim(-1, 24)
+    plt.xticks(channels)
+    plt.xlabel('Channel')
+    plt.ylabel('Offsets')
+    for i in channels:
+        if i == 0:
+            plt.bar(i, bottom=range_lower[i], height=range_upper[i]-range_lower[i], alpha=0.5, color='g',label='previous range')
+        else:
+            plt.bar(i, bottom=range_lower[i], height=range_upper[i] - range_lower[i], alpha=0.5, color='g')
+    inrange = np.zeros_like(values, dtype=bool)
+    deviation = np.zeros_like(values)
+    for i in range(len(values)):
+        if (values[i] < range_upper[i] and values[i] > range_lower[i]):
+            inrange[i] = True
+        elif values[i] > range_upper[i]:
+            deviation[i] = np.abs((values[i] - range_upper[i])/range_upper[i])
+        elif values[i] < range_lower[i]:
+            deviation[i] = np.abs((values[i] - range_lower[i])/range_lower[i])
+    for d in deviation:
+        if d!=0:
+            print(f'Deviation: {d:.2%}')
+    plt.scatter(channels[inrange], values[inrange], color='g', label='new constants in range')
+    plt.scatter(channels[~inrange], values[~inrange], color='r', label='new constants out of range')
+    # plt.errorbar(channels,norm_values,yerr=errors/range_lower,fmt='ob')
     plt.title(title)
     plt.legend()
     pdf.savefig()
@@ -58,8 +111,8 @@ def get_constants(pdf,name):
     #print(gains)
     #print(upper_gains)
     #print(lower_gains)
-    plot_constants(pdf, channel, gains, gain_errs, upper_gains, lower_gains, name + f' gain (normalized to lower range constant)')
-    plot_constants(pdf, channel, offsets, offset_errs, upper_offsets, lower_offsets, name + f' offset')
+    plot_gains(pdf, channel, gains, gain_errs, upper_gains, lower_gains, name + f' Gain (normalized to lower range constant)')
+    plot_offsets(pdf, channel, offsets, offset_errs, upper_offsets, lower_offsets, name + f' offset')
     return gains,offsets,gain_errs,offset_errs,upper_gains,lower_gains,upper_offsets,lower_offsets
 
 def main():

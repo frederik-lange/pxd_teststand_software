@@ -1,6 +1,6 @@
 """
- This program collects the constants of several calibrations and collects them in two .csv files, one for values and one for errors.
- The files are called 'output.csv' and 'output_err.csv' and are created in the Calibration_script folder
+    This program collects the constants of several calibrations and collects them in two .csv files, one for values and one for errors.
+    The files are called 'output.csv' and 'output_err.csv' and are created in the Calibration_script folder
 """
 
 import configparser
@@ -8,7 +8,7 @@ import csv
 import os
 import pandas as pd
 
-ps = 87
+ps = 15
 config = configparser.ConfigParser()
 config_ini = configparser.ConfigParser()
 
@@ -100,7 +100,6 @@ def collect_errors():
 
     csvfile.close()
     pd.read_csv('constants_err_collection.csv', header=None).T.to_csv(path + 'output_err.csv', header=False, index=False)
-
 
 def main():
     collect_constants()

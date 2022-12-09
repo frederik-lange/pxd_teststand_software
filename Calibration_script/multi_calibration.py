@@ -11,10 +11,10 @@ from Calibration_script import main
 import os
 
 def main():
-    ps = 87
+    ps = 26
     config = configparser.ConfigParser()
     config.read('path.ini')
-    config['calibration_data']['multi_cal_path'] = f'../data/ps{ps}'
+    config['calibration_data']['multi_cal_path'] = f'../data/ps{ps}_monitoring'
 
     for val in config['calibration_data']:
         print(val,config['calibration_data'][val])
@@ -22,7 +22,7 @@ def main():
     bad_data = np.zeros(20)
 
     # loop
-    for i in range(1,21):
+    for i in range(1,13):
         print(f"\nPS {ps} Calibration {i} in progress...\n")
         config['calibration_data']['data_path'] = config['calibration_data'].get('multi_cal_path') + f'/{i}_Calibration_ps{ps}'
         with open('path.ini', 'w') as configfile:

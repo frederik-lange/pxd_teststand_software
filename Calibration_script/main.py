@@ -97,42 +97,45 @@ def cut_outliers(x, y, x_err, y_err, channel):
     plt.savefig(f"../data/statistics/Channel {channel}: 2nd Gradient")
     """
 
-    # auxiliary fit
-    # Saturation got cut, considers all values along a line
-    #print("y[~helpcut]:",y[~help_cut].size)
-    popt, pcov = so.curve_fit(linear, x[~help_cut], y[~help_cut], sigma=y_err[~help_cut], absolute_sigma=True)
-    m, n = popt[0], popt[1]
-    #plot_with_fit(x[~help_cut], y[~help_cut], x[help_cut], y[help_cut], popt[0], popt[1], "", "", f"Channel {channel}: Plot with auxiliary fit")
+    if x[~help_cut].size >= 2:
+        # auxiliary fit
+        # Saturation got cut, considers all values along a line
+        #print("y[~helpcut]:",y[~help_cut].size)
+        popt, pcov = so.curve_fit(linear, x[~help_cut], y[~help_cut], sigma=y_err[~help_cut], absolute_sigma=True)
+        m, n = popt[0], popt[1]
+        #plot_with_fit(x[~help_cut], y[~help_cut], x[help_cut], y[help_cut], popt[0], popt[1], "", "", f"Channel {channel}: Plot with auxiliary fit")
 
-    # Fit with ODR
-    popt_odr, perr_odr, red_chi_2 = fit.fit_odr(fit_func=linear, x=x[~help_cut], y=y[~help_cut], x_err=x_err[~help_cut], y_err=y_err[~help_cut], p0=[popt[0], popt[1]])
-    #print("ODR Chi squared:", red_chi_2)
-    #print("ODR reduced chi squared", red_chi_2 / (len(x[~cut]) - 2))
-    m, n = popt_odr[0], popt_odr[1]
+        # Fit with ODR
+        popt_odr, perr_odr, red_chi_2 = fit.fit_odr(fit_func=linear, x=x[~help_cut], y=y[~help_cut], x_err=x_err[~help_cut], y_err=y_err[~help_cut], p0=[popt[0], popt[1]])
+        #print("ODR Chi squared:", red_chi_2)
+        #print("ODR reduced chi squared", red_chi_2 / (len(x[~cut]) - 2))
+        m, n = popt_odr[0], popt_odr[1]
 
-    # cut outliers
-    # idea: create auxiliary fit and remove the worst values
-    r = y - (m * x + n)
-    std_r = np.std(r[~cut])
-    mean_r = np.mean(r[~cut])
-    #print(f"Standard deviation of residuals: {std_r} \n Mean: {mean_r}")
-    # use abs of residuals because res are distributed around zero -> mean is useless
-    r = np.abs(r)
-    # cut on this
-    cut1 = np.abs(r) > 2 * np.abs(np.mean(r))
-    cut = cut + cut1
-    #plot_residuals(x, r, cut, f"Channel {channel}: Absolute values of residuals", f"Channel {channel}: Residuals")
+        # cut outliers
+        # idea: create auxiliary fit and remove the worst values
+        r = y - (m * x + n)
+        std_r = np.std(r[~cut])
+        mean_r = np.mean(r[~cut])
+        #print(f"Standard deviation of residuals: {std_r} \n Mean: {mean_r}")
+        # use abs of residuals because res are distributed around zero -> mean is useless
+        r = np.abs(r)
+        # cut on this
+        cut1 = np.abs(r) > 2 * np.abs(np.mean(r))
+        cut = cut + cut1
+        #plot_residuals(x, r, cut, f"Channel {channel}: Absolute values of residuals", f"Channel {channel}: Residuals")
 
-    # Final Fit
-    popt_odr, perr_odr, red_chi_2 = fit.fit_odr(fit_func=linear, x=x[~cut], y=y[~cut], x_err=x_err[~cut], y_err=y_err[~cut], p0=[popt[0], popt[1]])
-    m, n = popt_odr[0], popt_odr[1]
-    #print("Final Fit:")
-    #print(f"a = {popt_odr[0]} +/- {perr_odr}")
-    #print(f"b = {popt_odr[1]} +/- {perr_odr}")
-    #plot_with_fit(x[~cut], y[~cut], x[cut], y[cut], popt[0], popt[1], "", "", f"Channel {channel}: Plot with fit after outlier removal")
-    #print(f"ODR Chi Square: {red_chi_2}")
-
-    return x[~cut], y[~cut], x[cut], y[cut], cut
+        # Final Fit
+        popt_odr, perr_odr, red_chi_2 = fit.fit_odr(fit_func=linear, x=x[~cut], y=y[~cut], x_err=x_err[~cut], y_err=y_err[~cut], p0=[popt[0], popt[1]])
+        m, n = popt_odr[0], popt_odr[1]
+        #print("Final Fit:")
+        #print(f"a = {popt_odr[0]} +/- {perr_odr}")
+        #print(f"b = {popt_odr[1]} +/- {perr_odr}")
+        #plot_with_fit(x[~cut], y[~cut], x[cut], y[cut], popt[0], popt[1], "", "", f"Channel {channel}: Plot with fit after outlier removal")
+        #print(f"ODR Chi Square: {red_chi_2}")
+        return x[~cut], y[~cut], x[cut], y[cut], cut
+    else:
+        print('Too many values cut!')
+        return x[~help_cut],y[~help_cut], x,y,np.ones_like(x, dtype=bool)
 
 def linear(m,x,b):
     """
@@ -164,7 +167,7 @@ def plot_and_fit(x, y, dx, dy, x_cut, y_cut, xlabel, ylabel, label,n):
     :param label: title of plot
     :return: plot, slope and offset
     """
-    if x.size == 0:
+    if x.size <= 1:
         plt.subplot(2, 3, n)
         plt.scatter(x_cut, y_cut, color='grey', marker='.', linewidths=1.0, label='Outliers')
         plt.xlabel(xlabel)
@@ -561,7 +564,9 @@ def main():
                 # 3) I Cal: Iout vs. IoutMon
                 x_3,y_3, l_3 = get_and_prepare(data_IvsI, '$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
                 x_err_3 = SMU_I_error(x_3, channel)
+                # special monitoring for channel 13
                 if channel == 13:
+                    x_3 = x_3 * 1000
                     y_err_3 = np.ones_like(y_3)*0.00244
                 else:
                     y_err_3 = np.ones_like(y_3)*2.44
@@ -575,6 +580,9 @@ def main():
                 x_4,y_4,l_4 = get_and_prepare(data_IlimitvsI, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]')
                 x_err_4 = np.ones_like(x_4)*3.05
                 y_err_4= SMU_I_error(y_4, channel)
+                # special monitoring for channel 13
+                if channel == 13:
+                    y_4 = y_4*1000
                 x_4, y_4, x_cut_4,y_cut_4, cut_4 = cut_outliers(x_4, y_4, x_err_4, y_err_4, channel)
                 m_4, b_4, m_err_4, b_err_4 = plot_and_fit(x_4, y_4, x_err_4[~cut_4], y_err_4[~cut_4], x_cut_4,y_cut_4, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]', '$I_{lim,SMU} vs. I_{lim,DAC}$',5)
                 #if channel == 13:
