@@ -1,7 +1,7 @@
 """
     Compares the calibration constants of a new calibration to the existing range and shows the results visually
     Results are found in the folder with the source files in 'compare_constants_to_range.pdf'
-    Note: Irrelevant!
+    Note: Obsolete!
 """
 
 import numpy as np
@@ -123,11 +123,6 @@ def main():
         get_constants(pdf,'ADC_U_REGULATOR')
         get_constants(pdf,'ADC_I_MON')
         get_constants(pdf,'DAC_CURRENT')
-    #for i in range(len(upper_gains)):
-    #        print(upper_gains[i], lower_gains[i])
-
-# NOTE: RANGE IS WRONG WHEN UPPER AND LOWER END CROSS ZERO!
-
 
 """
     with PdfPages(os.path.join(path,'compare_constants_to_range.pdf')) as pdf:

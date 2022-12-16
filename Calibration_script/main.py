@@ -72,7 +72,7 @@ def cut_outliers(x, y, x_err, y_err, channel):
 
     # if all points were removed due to outliers, use median instead of mean
     if x[~help_cut].size <= 1:
-        print("Outlier condition activated!")
+        #print("Outlier condition activated!")
         help_cut1 = grad2 > 10.0
         help_cut2 = grad2 < - 10.0
         help_cut = help_cut1 + help_cut2 + cut
@@ -428,34 +428,40 @@ def pass_fail(residuals, l_1):
                 success = True # why like this?
             else:
                 pass
-
         in_range = 0
         for channel in range(24):
+            add = True
             if get_range(f'DAC_VOLTAGE_GAIN', f'DAC_VOLTAGE_OFFSET', channel) == True:
                 print('Warning! Please check Channel %d. DAC_VOLTAGE out of usual range.' % channel)
+                add = False
             if get_range(f'ADC_U_LOAD_GAIN', f'ADC_U_LOAD_OFFSET', channel) == True:
                 print('Warning! Please check Channel %d. ADC_U_LOAD out of usual range.' % channel)
+                add = False
             if get_range(f'ADC_U_REGULATOR_GAIN', f'ADC_U_REGULATOR_OFFSET', channel) == True:
                 print('Warning! Please check Channel %d. ADC_U_REGULATOR out of usual range.' % channel)
+                add = False
             if get_range(f'ADC_I_MON_GAIN', f'ADC_I_MON_OFFSET', channel) == True:
                 print('Warning! Please check Channel %d. ADC_I_MON out of usual range.' % channel)
+                add = False
             if get_range(f'DAC_CURRENT_GAIN', f'DAC_CURRENT_OFFSET', channel) == True:
                 print('Warning! Please check Channel %d. DAC_CURRENT out of usual range.' % channel)
-            else:
+                add = False
+            if add == True:
                 in_range += 1
 
         print('\n'.join(map(str, residuals)))
-
         if success == False and in_range == 24 and len(residuals) == 0:
             print('Calibration was successful!')
         elif success == False and in_range < 23 or len(residuals) > 0:
             print('Calibration was NOT successful! Please check warnings!')
         elif success == True and in_range == 24:
             print('Calibration was NOT successful! To many points were deleted!')
-
+    return not success
 
 def get_range(name_gain, name_offset,channel):
     in_range = False
+    """
+    Old version:
     gain_upper = float(config_range[f'{channel}'].get(name_gain + '_UPPER'))
     gain_lower = float(config_range[f'{channel}'].get(name_gain + '_LOWER'))
     gain = float(config_ini[f'{channel}'].get(name_gain))
@@ -463,6 +469,20 @@ def get_range(name_gain, name_offset,channel):
     offset_upper = float(config_range[f'{channel}'].get(name_offset + '_UPPER'))
     offset_lower = float(config_range[f'{channel}'].get(name_offset + '_LOWER'))
     offset = float(config_ini[f'{channel}'].get(name_offset))
+    """
+
+    gain = float(config_ini[f'{channel}'].get(name_gain))
+    offset = float(config_ini[f'{channel}'].get(name_offset))
+    config_vals = configparser.ConfigParser()
+    config_errs = configparser.ConfigParser()
+    config_vals.read('../data/database.ini')
+    config_errs.read('../data/database_std.ini')
+    gain_mean = float(config_vals[f'{channel}'][f'{name_gain}_{channel}'])
+    gain_std = float(config_errs[f'{channel}'][f'{name_gain}_{channel}'])
+    gain_upper, gain_lower = gain_mean + 4*gain_std, gain_mean - 4*gain_std
+    offset_mean = float(config_vals[f'{channel}'][f'{name_offset}_{channel}'])
+    offset_std = float(config_errs[f'{channel}'][f'{name_offset}_{channel}'])
+    offset_upper, offset_lower = offset_mean + 4*offset_std, offset_mean - 4*offset_std
 
     if gain > gain_upper:
         in_range = True
@@ -524,10 +544,12 @@ def main():
                 data_UvsU = read_data(path_UvsU, columns_UvsU)
 
                 # get file creation time on mac
-                stat = os.stat(path_UvsU)
+                #stat = os.stat(path_UvsU)
                 #c_timestamp = stat.st_birthtime
-                c_timestamp = stat.st_ctime
-                c_time = datetime.date.fromtimestamp(c_timestamp)
+                #c_timestamp = stat.st_ctime
+                # get file modification time on linux
+                timestamp = os.path.getmtime(path_UvsU)
+                m_time = datetime.date.fromtimestamp(timestamp)
 
                 # Opening I_vs_I.dat file
                 path_IvsI = os.path.join(config["calibration_data"].get("data_path"),'Channel_%d_I_vs_I' % channel + '.dat')
@@ -664,7 +686,7 @@ def main():
                 pdf.savefig()
                 plt.close()
 
-                config_ini['Information'] = {'date': c_time,
+                config_ini['Information'] = {'date': m_time,
                                         'format': 'yyyy-mm-dd'}
                 write_in_ini(config_ini, channel, m_0, b_0, m_1, b_1, m_2, b_2, m_3, b_3, m_4, b_4)
                 write_in_ini(config_err, channel, m_err_0, b_err_0, m_err_1, b_err_1, m_err_2, b_err_2, m_err_3, b_err_3, m_err_4, b_err_4)
@@ -682,7 +704,8 @@ def main():
         print('Plotting Histogram with Number of deleted points...')
         histo_deleted_points(l_1)
         print('Checking if Calibration was successful...\n')
-        pass_fail(residuals, l_1)
+        success = pass_fail(residuals, l_1)
+        return success
 
 if __name__ == '__main__':
     main()

@@ -11,6 +11,18 @@ from Calibration_script import main
 import os
 
 def main():
+    config = configparser.ConfigParser()
+    config.read('path.ini')
+    for i in range(20,90):
+        for root, dirs, files in os.walk(f'../data/CalibrationData/ps{i}'):
+            for dir in dirs:
+                if os.path.exists(os.path.join(root,dir,'Channel_0_U_vs_U.dat')):
+                    print(root,dir)
+                    config['calibration_data']['data_path'] = os.path.join(root,dir)
+                    with open('path.ini', 'w') as configfile:
+                        config.write(configfile)
+                    Calibration_script.main.main()
+    '''
     ps = 26
     config = configparser.ConfigParser()
     config.read('path.ini')
@@ -22,7 +34,7 @@ def main():
     bad_data = np.zeros(20)
 
     # loop
-    for i in range(1,13):
+    for i in range(1,21):
         print(f"\nPS {ps} Calibration {i} in progress...\n")
         config['calibration_data']['data_path'] = config['calibration_data'].get('multi_cal_path') + f'/{i}_Calibration_ps{ps}'
         with open('path.ini', 'w') as configfile:
@@ -33,6 +45,8 @@ def main():
         except (TypeError):
             bad_data[i-1] = 1
             print(f"PS {ps} Calibration {i} raised an error!")
+    '''
+
 
 if __name__ == '__main__':
     main()
