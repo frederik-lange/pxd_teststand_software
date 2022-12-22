@@ -410,7 +410,7 @@ def pass_fail(residuals, l_1):
     plot_2 = []
     plot_3 = []
     plot_4 = []
-    success = False
+    success = True
     with open('deleted_points.csv', 'r') as csvfile:
         plots = csv.reader(csvfile, delimiter=',')
         next(plots)
@@ -425,9 +425,7 @@ def pass_fail(residuals, l_1):
             l = l_1*0.6
             if int(row[1]) > l or int(row[2]) > l or int(row[3]) > l or int(row[4]) > l or int(row[5]) > l:
                 print('Warning! Please check Channel %d. Too many points were deleted.'%(int(row[0])))
-                success = True # why like this?
-            else:
-                pass
+                success = False
         in_range = 0
         for channel in range(24):
             add = True
@@ -450,13 +448,13 @@ def pass_fail(residuals, l_1):
                 in_range += 1
 
         print('\n'.join(map(str, residuals)))
-        if success == False and in_range == 24 and len(residuals) == 0:
+        if success == True and in_range == 24 and len(residuals) == 0:
             print('Calibration was successful!')
         elif success == False and in_range < 23 or len(residuals) > 0:
             print('Calibration was NOT successful! Please check warnings!')
-        elif success == True and in_range == 24:
+        elif success == False and in_range == 24:
             print('Calibration was NOT successful! To many points were deleted!')
-    return not success
+    return success
 
 def get_range(name_gain, name_offset,channel):
     in_range = False
@@ -479,9 +477,11 @@ def get_range(name_gain, name_offset,channel):
     config_errs.read('../data/database_std.ini')
     gain_mean = float(config_vals[f'{channel}'][f'{name_gain}_{channel}'])
     gain_std = float(config_errs[f'{channel}'][f'{name_gain}_{channel}'])
+    # gain criteria: 4 stds
     gain_upper, gain_lower = gain_mean + 4*gain_std, gain_mean - 4*gain_std
     offset_mean = float(config_vals[f'{channel}'][f'{name_offset}_{channel}'])
     offset_std = float(config_errs[f'{channel}'][f'{name_offset}_{channel}'])
+    # offset criteria: has to be revised
     offset_upper, offset_lower = offset_mean + 4*offset_std, offset_mean - 4*offset_std
 
     if gain > gain_upper:

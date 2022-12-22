@@ -96,21 +96,40 @@ def fill():
             scan_and_add(path_ps,ps)
 
 def update_range():
+    # updates the range of valid constants. Results can be found in the 'database.ini' and 'database_std.ini'
     data = pd.read_csv('../data/database.csv')
-    print(data['Unit'].shape)
-    print(data.shape)
+    #print(data['Unit'].shape)
+    #print(data.shape)
     medians = np.zeros(240)
     sigmas = np.zeros(240)
-    print(medians.shape)
 
-    print('Median',names[2],np.mean(data[names[2]]))
+    #print('Median',names[2],np.mean(data[names[2]]))
     medians[:] = np.mean(data[names[2:]])
     medians = medians.reshape(24,10)
-    print('STD',names[2],np.std(data[names[2]]))
+    #print('STD',names[2],np.std(data[names[2]]))
     sigmas[:] = np.std(data[names[2:]])
     sigmas = sigmas.reshape(24,10)
     #print(medians[:][0])
     #print(medians)
+
+    # special case for hv (Channel 13): consider only values with muA monitoring
+    mask = data['ADC_I_MON_GAIN_13']>-1500
+    medians[13,6] = np.mean(data['ADC_I_MON_GAIN_13'][mask])
+    sigmas[13,6] = np.std(data['ADC_I_MON_GAIN_13'][mask])
+    medians[13,7] = np.mean(data['ADC_I_MON_OFFSET_13'][mask])
+    sigmas[13,7] = np.std(data['ADC_I_MON_OFFSET_13'][mask])
+    mask = data['DAC_CURRENT_GAIN_13']>90000
+    medians[13,8] = np.mean(data['DAC_CURRENT_GAIN_13'][mask])
+    sigmas[13,8] = np.std(data['DAC_CURRENT_GAIN_13'][mask])
+    medians[13,9] = np.mean(data['DAC_CURRENT_OFFSET_13'][mask])
+    sigmas[13,9] = np.std(data['DAC_CURRENT_OFFSET_13'][mask])
+    # special case for bulk (Channel 15): consider only values with muA monitoring
+    mask = data['ADC_I_MON_GAIN_15'] > -500000
+    medians[15,6] = np.mean(data['ADC_I_MON_GAIN_15'][mask])
+    sigmas[15,6] = np.std((data['ADC_I_MON_GAIN_15'][mask]))
+    medians[15,7] = np.mean(data['ADC_I_MON_OFFSET_15'][mask])
+    sigmas[15,7] = np.std((data['ADC_I_MON_OFFSET_15'][mask]))
+    #print(medians[15,6:8],sigmas[15,6:8])
 
     config = configparser.ConfigParser()
 
@@ -136,45 +155,75 @@ def normal_distribution():
     config_vals.read('../data/database.ini')
     config_errs = configparser.ConfigParser()
     config_errs.read('../data/database_std.ini')
-    print(data.shape)
+    #print(data.shape)
     with PdfPages('../data/Normal_Distribution') as pdf:
+        count_1, count_tot_1, count_2, count_tot_2, count_3, count_tot_3 = 0, 0, 0, 0, 0, 0
         for channel in range(24):
-            print(channel)
+            print(f'Plotting channel {channel}...')
             for n in range(10):
                 plt.subplots()
                 plt.xlabel('Values')
                 plt.ylabel('Counts')
                 plt.title(f'Channel {channel}: {names[2 + channel * 10 + n]}')
-                print(names[2+channel*10+n])
+                #print(names[2+channel*10+n])
                 med, std = float(config_vals[f'{channel}'][names[2+channel*10+n]]), float(config_errs[f'{channel}'][names[2+channel*10+n]])
-                max = int(np.max(data[names[2+channel*10+n]]))
-                min = int(np.min(data[names[2+channel*10+n]]))
+                mask = np.full(len(data[names[2+channel*10+n]]), True)
+                if channel == 13 and (n == 6 or n == 7):
+                    mask = data['ADC_I_MON_GAIN_13'] > -1500
+                elif channel == 13 and (n==8 or n == 9):
+                    mask = data['DAC_CURRENT_GAIN_13'] > 90000
+                elif channel == 15 and (n==6 or n == 7):
+                    mask = data['ADC_I_MON_GAIN_15'] > -500000
+                max = int(np.max(data[names[2+channel*10+n]][mask]))
+                min = int(np.min(data[names[2+channel*10+n]][mask]))
                 diff = max-min
                 if diff > 200:
                     diff = 200
-                histo = plt.hist(data[names[2+channel*10+n]],bins=diff)
+
+                histo = plt.hist(data[names[2+channel*10+n]][mask],bins=diff)
                 #print(histo[0], "\n", histo[1])
-                plt.axvline(med, color='black')
-                plt.axvline(med - std, color='green')
+                plt.axvline(med, color='black', label='mean')
+                plt.axvline(med - std, color='green', label='$1 \sigma$')
                 plt.axvline(med + std, color='green')
-                plt.axvline(med - 2*std, color='yellow')
-                plt.axvline(med + 2*std, color='yellow')
-                plt.axvline(med + 3*std, color='red')
+                plt.axvline(med - 2*std, color='yellow', label='$2 \sigma$')
+                plt.axvline(med + 2*std, color='yellow',)
+                plt.axvline(med + 3*std, color='red', label='$3 \sigma$')
                 plt.axvline(med - 3*std,color='red')
                 x = np.arange(min,max,0.1)
                 try:
-                    popt, pcov = so.curve_fit(gauss, histo[1][1:] - histo[1][:-1], histo[0], bounds=([med-std,0,0],[med+std,2*std,2*len(data[names[2+channel*10+n]])]))
-                    print(popt,pcov)
-                    plt.plot(x, gauss(x,*popt))
+                    popt, pcov = so.curve_fit(gauss, (histo[1][1:]+histo[1][:-1])/2, histo[0], bounds=([med-std,0,0],[med+std,3*std,2*len(data[names[2+channel*10+n]])]))
+                    #print(popt)
+                    plt.plot(x, gauss(x,*popt),label='fitted gauss curve')
                 except RuntimeError:
                     pass
+                plt.legend()
+                # check if values are normally distributed
+                if n%2==0:
+                    for i in range(1,4):
+                        mask = (histo[1][:-1] > med - i*std) & (histo[1][:-1] < med+i*std)
+                        sum, sum_total = np.sum(histo[0][mask]), np.sum(histo[0])
+                        #print(sum, sum_total, sum/sum_total)
+                        if i == 1:
+                            count_tot_1 += 1
+                            if sum/sum_total >=  0.6827:
+                                count_1 += 1
+                        if i == 2:
+                            count_tot_2 += 1
+                            if sum/sum_total >= 0.9545:
+                                count_2 += 1
+                        if i == 3:
+                            count_tot_3 += 1
+                            if sum/sum_total >= 0.9973:
+                                count_3 += 1
                 pdf.savefig()
                 plt.close()
+        print(f'Normally distributed values: \n1 sigma: {count_1} of {count_tot_1}\n2 sigma: {count_2} of {count_tot_2}\n3 sigma: {count_3} of {count_tot_3}')
 
 def main():
     #fill()
+    #scan_and_add('../data/CalibrationData/ps47/PS_47_20221221',47)
     update_range()
-    #normal_distribution()
+    normal_distribution()
     '''
     source = '/home/silab44/pxd_teststand_software_git/pxd_teststand_software/OldCallibrations'
     dest = '/home/silab44/pxd_teststand_software_frederik/data/CalibrationData'
