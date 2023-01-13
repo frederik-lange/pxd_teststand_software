@@ -1,6 +1,7 @@
 """
     Collects data from ALL the constants.ini files in the CalibrationData folder and stores them in a .csv file
     Requires a working folder structure!
+    The pdf is stored in "Normal_Distribution.pdf" in the data folder
 """
 
 import numpy as np
@@ -198,7 +199,7 @@ def normal_distribution():
                     pass
                 plt.legend()
                 # check if values are normally distributed
-                if n%2==0:
+                if n%2==1:
                     for i in range(1,4):
                         mask = (histo[1][:-1] > med - i*std) & (histo[1][:-1] < med+i*std)
                         sum, sum_total = np.sum(histo[0][mask]), np.sum(histo[0])

@@ -1,5 +1,11 @@
+'''
+    In this program the outlier treatment was developed and tested
+    Can be used for investigation of data with strange values
+    The plots are deposited in the "statistics" subfolder in the file folder
+'''
 from Calibration_script import main
 from Calibration_script import fit
+import validation
 import numpy as np
 import scipy.optimize as so
 import scipy.stats as ss
@@ -7,7 +13,9 @@ import matplotlib.pyplot as plt
 import os
 import configparser
 
-path = '../data/ps_15_30112022'
+path = '../data/example'
+if not os.path.exists(os.path.join(path,'statistics')):
+    os.mkdir(os.path.join(path,'statistics'))
 
 lin = lambda x, a, b: a*x + b
 
@@ -150,9 +158,36 @@ def outliers(x,y):
 
     return x[~cut], y[~cut], x[cut], y[cut], m, n
 
-### important
+def outliers_old(x, y):
+    """
+    Cuts points that are to far away from the fit
+    :param x: np array
+    :return: cut data
+    """
+    # Calculating the slope
+    slopes = (y - y[0])/x
+    m = np.polyfit(x[:20],y[:20],deg = 1)
+
+    tolerance = abs(m[0]*x[0] - m[0]*x[-1])*0.01
+    #tolerance = abs(y[0]-y[-1])*0.01
+
+    # Making array same size as data with only False in it
+    cut = np.zeros_like(slopes, dtype=bool)
+    # Set False to zero in parts where data gradient is close to zero
+    cut[:][np.isclose(np.gradient(y), 0, atol=tolerance)] = True
+
+    if x[~cut].size == 0:
+        return x[~cut], y[~cut], x[cut], y[cut]
+    else:
+        # calculate mean and standard deviation
+        mean, std = np.mean(slopes[~cut]), np.std(slopes[~cut])
+        #print(f'For slopes: mean: {mean}, standard deviation: {std}')
+        #cut to  2 sigma
+        cut[np.logical_or((slopes >= 2 * std + mean), (slopes <= mean - 2 * std))] = True
+
+    return x[~cut], y[~cut],x[cut], y[cut]
+
 channel = 21
-###
 
 path_UvsU = os.path.join(path,f'Channel_{channel}_U_vs_U.dat')
 # Test File
@@ -171,11 +206,23 @@ columns_IlimitvsI = ["$I_{lim,DAC}$ [mV]", "$I_{lim,SMU}$ [mA]", "unknown 3", "u
 data_IlimitvsI = main.read_data(path_IlimitvsI, columns_IlimitvsI)
 
 # For Current
-#x,y,l = main.get_and_prepare(data_IvsI,'$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
-x,y,l = main.get_and_prepare(data_IlimitvsI,"$I_{lim,DAC}$ [mV]", "$I_{lim,SMU}$ [mA]")
+x,y,l = main.get_and_prepare(data_IvsI,'$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
+# For Limit
+#x,y,l = main.get_and_prepare(data_IlimitvsI,"$I_{lim,DAC}$ [mV]", "$I_{lim,SMU}$ [mA]")
 # For Voltage
 #x,y,l= main.get_and_prepare(data_UvsU, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]')
 
 plt.scatter(x,y)
 plt.show()
+plt.close()
 x,y,x_cut,y_cut, m, n = outliers(x,y)
+
+# compare to old function:
+x,y,l = main.get_and_prepare(data_IvsI,'$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
+x,y,x_cut,y_cut = outliers_old(x,y)
+# errors
+x_err = main.SMU_I_error(x,channel)
+y_err = np.ones_like(y)*2.44
+popt, pcov = so.curve_fit(lin, x, y, sigma=y_err, absolute_sigma=True)
+popt, perr, red_chi_2 = fit.fit_odr(fit_func=lin, x=x, y=y, x_err=x_err, y_err=y_err, p0=[popt[0], popt[1]])
+print(f"Parameters gained from the old function:\npopt: {popt}\nperr: {perr}\nChi square: {red_chi_2}")

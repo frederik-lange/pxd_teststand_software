@@ -432,25 +432,30 @@ def pass_fail(residuals, l_1):
             if get_range(f'DAC_VOLTAGE_GAIN', f'DAC_VOLTAGE_OFFSET', channel) == True:
                 print('Warning! Please check Channel %d. DAC_VOLTAGE out of usual range.' % channel)
                 add = False
+                success = False
             if get_range(f'ADC_U_LOAD_GAIN', f'ADC_U_LOAD_OFFSET', channel) == True:
                 print('Warning! Please check Channel %d. ADC_U_LOAD out of usual range.' % channel)
                 add = False
+                success = False
             if get_range(f'ADC_U_REGULATOR_GAIN', f'ADC_U_REGULATOR_OFFSET', channel) == True:
                 print('Warning! Please check Channel %d. ADC_U_REGULATOR out of usual range.' % channel)
                 add = False
+                success = False
             if get_range(f'ADC_I_MON_GAIN', f'ADC_I_MON_OFFSET', channel) == True:
                 print('Warning! Please check Channel %d. ADC_I_MON out of usual range.' % channel)
                 add = False
+                success = False
             if get_range(f'DAC_CURRENT_GAIN', f'DAC_CURRENT_OFFSET', channel) == True:
                 print('Warning! Please check Channel %d. DAC_CURRENT out of usual range.' % channel)
                 add = False
+                success = False
             if add == True:
                 in_range += 1
 
         print('\n'.join(map(str, residuals)))
         if success == True and in_range == 24 and len(residuals) == 0:
             print('Calibration was successful!')
-        elif success == False and in_range < 23 or len(residuals) > 0:
+        elif success == False and in_range < 24 or len(residuals) > 0:
             print('Calibration was NOT successful! Please check warnings!')
         elif success == False and in_range == 24:
             print('Calibration was NOT successful! To many points were deleted!')
