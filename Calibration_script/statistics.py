@@ -187,7 +187,7 @@ def outliers_old(x, y):
 
     return x[~cut], y[~cut],x[cut], y[cut]
 
-channel = 21
+channel = 5
 
 path_UvsU = os.path.join(path,f'Channel_{channel}_U_vs_U.dat')
 # Test File
@@ -216,6 +216,12 @@ plt.scatter(x,y)
 plt.show()
 plt.close()
 x,y,x_cut,y_cut, m, n = outliers(x,y)
+
+# compare to root:
+root_gain, root_offset = -145443, 2478
+y_fit = x * root_gain/10000 + root_offset/100
+root_chisquare = np.sum((y - y_fit)**2/y_fit)
+print(f"ROOT CHI SQUARE: {root_chisquare}")
 
 # compare to old function:
 x,y,l = main.get_and_prepare(data_IvsI,'$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')

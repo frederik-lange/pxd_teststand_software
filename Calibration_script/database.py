@@ -224,7 +224,7 @@ def main():
     #fill()
     #scan_and_add('../data/CalibrationData/ps47/PS_47_20221221',47)
     update_range()
-    normal_distribution()
+    #normal_distribution()
     '''
     source = '/home/silab44/pxd_teststand_software_git/pxd_teststand_software/OldCallibrations'
     dest = '/home/silab44/pxd_teststand_software_frederik/data/CalibrationData'
