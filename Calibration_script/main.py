@@ -13,7 +13,6 @@ import datetime
 config = configparser.ConfigParser()
 config_ini = configparser.ConfigParser()
 config_err = configparser.ConfigParser()
-config_range = configparser.ConfigParser()
 config_ini.optionxform = str
 config_err.optionxform = str
 
@@ -34,8 +33,6 @@ def prepare_data(x, y):
 def cut_outliers(x, y, x_err, y_err, channel):
     """
     Cuts points that are to far away from the fit
-    :param x: np array
-    :return: cut data
     """
 
     # range criteria (remove saturation)
@@ -182,6 +179,7 @@ def plot_and_fit(x, y, dx, dy, x_cut, y_cut, xlabel, ylabel, label,n):
     else:
         # p0 estimator
         p0 = np.mean((y-y[0])/x)
+
         # (m, b), (SSE,), *_ = np.polyfit(x, y, deg=1, full=True)
         popt, perr, red_chi_2 = fit.fit_odr(fit_func=linear,
                                             x=x,
@@ -233,13 +231,6 @@ def residual_plots(data_x, data_y,x,y,cut_x, cut_y, m, b, n, channel, residuals)
     plt.xlabel(data_x)
     plt.ylabel(data_y)
     plt.legend(prop={'size': 8})
-    #check if values a normal distributed
-    #k2, p = shapiro(r)
-    #alpha = 0.05
-    #if p > alpha:
-    #    pass
-    #else:
-    #    residuals.append("Warning! Please check Channel %d." % channel+" Residual:"+data_x+" vs. " +data_y+" does not correspond to expected normal distribution.")
 
 def plot_residuals(x,r, cut, title,name):
     """
@@ -326,7 +317,7 @@ def SMU_V_error(data):
 def SMU_I_error(data, channel):
     error=np.zeros_like(data)
     if channel == 13:
-        np.multiply(data, 0.0001)
+        np.multiply(data, 0.001) # previously: 0.0001
     for i in range(len(error)):
         if (abs(data[i])<0.1):
             error[i] =  data[i]*0.0002+0.000025
@@ -345,7 +336,6 @@ def SMU_I_error(data, channel):
         elif (abs(data[i]) < 10000):
             error[i] = data[i] * 0.04 + 25
     return error
-
 
 def histo_deleted_points(length):
     Channel = []
@@ -380,14 +370,12 @@ def histo_deleted_points(length):
     plt.savefig(os.path.join(config["calibration_data"].get("data_path"),'deleted_point.pdf'))
     plt.close()
 
-
 def plot_histo(x,y,title,n, length):
 
     color_map = cm.get_cmap('RdYlGn_r')
 
     data_hight_normalized = [z / length for z in y]
     colors = color_map(data_hight_normalized)
-
 
     plt.subplot(2, 3, n)
     plt.bar(x, y, color=colors, width=0.72, label=title)
@@ -403,7 +391,6 @@ def plot_histo(x,y,title,n, length):
     #cbar.set_label('Color', rotation=270, labelpad=25)
 
 def pass_fail(residuals, l_1):
-    config_range.read("constants_range.ini")
     Channel = []
     plot_0 = []
     plot_1 = []
@@ -459,6 +446,13 @@ def pass_fail(residuals, l_1):
             print('Calibration was NOT successful! Please check warnings!')
         elif success == False and in_range == 24:
             print('Calibration was NOT successful! To many points were deleted!')
+        # write calibration result in ini file
+        with open(os.path.join(config["calibration_data"].get("data_path"), 'constants.ini'), 'w') as configfile:
+            if success == True:
+                config_ini["Information"]["success"] = "True"
+            else:
+                config_ini["Information"]["success"] = "False"
+            config_ini.write(configfile)
     return success
 
 def get_range(name_gain, name_offset,channel):
@@ -591,15 +585,14 @@ def main():
                 # 3) I Cal: Iout vs. IoutMon
                 x_3,y_3, l_3 = get_and_prepare(data_IvsI, '$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
                 x_err_3 = SMU_I_error(x_3, channel)
-                # special monitoring for channel 13
+                y_err_3 = np.ones_like(y_3) * 2.44
+                # special monitoring for channel 13 (uA)
                 if channel == 13:
                     x_3 = x_3 * 1000
-                    y_err_3 = np.ones_like(y_3)*0.00244
-                else:
-                    y_err_3 = np.ones_like(y_3)*2.44
+                    x_err_3 = x_err_3 * 1000
                 x_3, y_3, x_cut_3,y_cut_3, cut_3 = cut_outliers(x_3, y_3, x_err_3, y_err_3, channel)
                 if channel == 13:
-                    m_3, b_3, m_err_3, b_err_3 = plot_and_fit(x_3, y_3, x_err_3[~cut_3], y_err_3[~cut_3],x_cut_3,y_cut_3,'$I_{SMU}$ [mA]', '$I_{outMon}$ [$\mu$V]', '$I_{outMON} vs. I_{SMU}$',4)
+                    m_3, b_3, m_err_3, b_err_3 = plot_and_fit(x_3, y_3, x_err_3[~cut_3], y_err_3[~cut_3], x_cut_3,y_cut_3, '$I_{SMU}$ [$\mu$A]', '$I_{outMon}$ [mV]', '$I_{outMON} vs. I_{SMU}$',4)
                 else:
                     m_3, b_3, m_err_3, b_err_3 = plot_and_fit(x_3, y_3, x_err_3[~cut_3], y_err_3[~cut_3], x_cut_3,y_cut_3, '$I_{SMU}$ [mA]', '$I_{outMon}$ [mV]', '$I_{outMOn} vs. I_{SMU}$',4)
 
@@ -626,9 +619,7 @@ def main():
 
                 plt.figtext(0.75, 0.18,title+plot_0+plot_1+plot_2+plot_3+plot_4,bbox=dict(facecolor='lightgrey', edgecolor='red'), fontdict=None)
 
-
                 writer.writerow({'Channel': channel, 'plot_0': '%d'%(l_0-len(x_0)), 'plot_1': '%d'%(l_1-len(x_1)), 'plot_2': '%d'%(l_2-len(x_2)), 'plot_3': '%d'%(l_3-len(x_3)), 'plot_4': '%d'%(l_4-len(x_4))})
-
 
                 # All 5 plots in one figure
                 plt.subplots_adjust(left=0.1,
@@ -652,7 +643,7 @@ def main():
                 residual_plots('$U_{out}$ [mV]', '$U_{load}$ [mV]',x_2, y_2, x_cut_2, y_cut_2, m_2, b_2,3, channel, residuals)
                 # (3) I Cal: Iout vs. IoutMon
                 if (channel == 13):
-                    residual_plots('$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]',x_3, y_3, x_cut_3, y_cut_3, m_3, b_3,4, channel, residuals)
+                    residual_plots('$I_{out(SMU)}$ [$\mu$A]', '$I_{outMon}$ [mV]',x_3, y_3, x_cut_3, y_cut_3, m_3, b_3,4, channel, residuals)
                 else:
                     residual_plots('$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]',x_3, y_3, x_cut_3, y_cut_3, m_3, b_3,4, channel, residuals)
                 # 4) I Cal: DAC LIMIT vs. I Measured

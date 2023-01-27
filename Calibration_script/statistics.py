@@ -187,7 +187,7 @@ def outliers_old(x, y):
 
     return x[~cut], y[~cut],x[cut], y[cut]
 
-channel = 5
+channel = 13
 
 path_UvsU = os.path.join(path,f'Channel_{channel}_U_vs_U.dat')
 # Test File

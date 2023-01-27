@@ -17,11 +17,16 @@ def main():
         for root, dirs, files in os.walk(f'../data/CalibrationData/ps{i}'):
             for dir in dirs:
                 if os.path.exists(os.path.join(root,dir,'Channel_0_U_vs_U.dat')):
-                    print(root,dir)
+                    print(f'{root}/{dir}')
                     config['calibration_data']['data_path'] = os.path.join(root,dir)
                     with open('path.ini', 'w') as configfile:
                         config.write(configfile)
-                    Calibration_script.main.main()
+                    #Calibration_script.main.main()
+                    try:
+                        Calibration_script.main.main()
+                        print(f"\nPS {i} Calibration done!\n")
+                    except (TypeError):
+                        print(f"PS {i} Calibration raised an error!")
     '''
     ps = 26
     config = configparser.ConfigParser()
