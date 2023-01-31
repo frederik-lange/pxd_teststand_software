@@ -192,14 +192,15 @@ def normal_distribution():
                 plt.axvline(med - 3*std,color='red')
                 x = np.arange(min,max,0.1)
                 try:
-                    popt, pcov = so.curve_fit(gauss, (histo[1][1:]+histo[1][:-1])/2, histo[0], bounds=([med-std,0,0],[med+std,3*std,2*len(data[names[2+channel*10+n]])]))
+                    popt, pcov = so.curve_fit(gauss, (histo[1][1:]+histo[1][:-1])/2, histo[0], bounds=([med-1*std,0,0],[med+1*std,1*std,1*len(data[names[2+channel*10+n]])]))
                     #print(popt)
+                    x = np.arange(med-3*std, med+3*std,0.1)
                     plt.plot(x, gauss(x,*popt),label='fitted gauss curve')
                 except RuntimeError:
-                    pass
+                    print("Gauss function could not be fitted!")
                 plt.legend()
                 # check if values are normally distributed
-                if n%2==1:
+                if n%2==0:
                     for i in range(1,4):
                         mask = (histo[1][:-1] > med - i*std) & (histo[1][:-1] < med+i*std)
                         sum, sum_total = np.sum(histo[0][mask]), np.sum(histo[0])
@@ -224,7 +225,7 @@ def main():
     #fill()
     #scan_and_add('../data/CalibrationData/ps47/PS_47_20221221',47)
     update_range()
-    #normal_distribution()
+    normal_distribution()
     '''
     source = '/home/silab44/pxd_teststand_software_git/pxd_teststand_software/OldCallibrations'
     dest = '/home/silab44/pxd_teststand_software_frederik/data/CalibrationData'

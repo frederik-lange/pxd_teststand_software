@@ -32,7 +32,7 @@ def prepare_data(x, y):
 
 def cut_outliers(x, y, x_err, y_err, channel):
     """
-    Cuts points that are to far away from the fit
+    Cuts points that are too far away from the fit
     """
 
     # range criteria (remove saturation)
@@ -371,7 +371,6 @@ def histo_deleted_points(length):
     plt.close()
 
 def plot_histo(x,y,title,n, length):
-
     color_map = cm.get_cmap('RdYlGn_r')
 
     data_hight_normalized = [z / length for z in y]
@@ -413,39 +412,25 @@ def pass_fail(residuals, l_1):
             if int(row[1]) > l or int(row[2]) > l or int(row[3]) > l or int(row[4]) > l or int(row[5]) > l:
                 print('Warning! Please check Channel %d. Too many points were deleted.'%(int(row[0])))
                 success = False
-        in_range = 0
+        # Compare channels, improve output (make it more clearly)
+        # if successful: add to database
+        wrong_channels = np.zeros(24)
         for channel in range(24):
             add = True
-            if get_range(f'DAC_VOLTAGE_GAIN', f'DAC_VOLTAGE_OFFSET', channel) == True:
-                print('Warning! Please check Channel %d. DAC_VOLTAGE out of usual range.' % channel)
-                add = False
-                success = False
-            if get_range(f'ADC_U_LOAD_GAIN', f'ADC_U_LOAD_OFFSET', channel) == True:
-                print('Warning! Please check Channel %d. ADC_U_LOAD out of usual range.' % channel)
-                add = False
-                success = False
-            if get_range(f'ADC_U_REGULATOR_GAIN', f'ADC_U_REGULATOR_OFFSET', channel) == True:
-                print('Warning! Please check Channel %d. ADC_U_REGULATOR out of usual range.' % channel)
-                add = False
-                success = False
-            if get_range(f'ADC_I_MON_GAIN', f'ADC_I_MON_OFFSET', channel) == True:
-                print('Warning! Please check Channel %d. ADC_I_MON out of usual range.' % channel)
-                add = False
-                success = False
-            if get_range(f'DAC_CURRENT_GAIN', f'DAC_CURRENT_OFFSET', channel) == True:
-                print('Warning! Please check Channel %d. DAC_CURRENT out of usual range.' % channel)
-                add = False
-                success = False
-            if add == True:
-                in_range += 1
+            for name in ['DAC_VOLTAGE_GAIN','DAC_VOLTAGE_OFFSET','ADC_U_LOAD_GAIN','ADC_U_LOAD_OFFSET','ADC_U_REGULATOR_GAIN','ADC_U_REGULATOR_OFFSET',
+                         'ADC_I_MON_GAIN','ADC_I_MON_OFFSET','DAC_CURRENT_GAIN','DAC_CURRENT_OFFSET']:
+                if check_range(name,channel) == False:
+                    wrong_channels[channel] = 1
 
-        print('\n'.join(map(str, residuals)))
-        if success == True and in_range == 24 and len(residuals) == 0:
-            print('Calibration was successful!')
-        elif success == False and in_range < 24 or len(residuals) > 0:
-            print('Calibration was NOT successful! Please check warnings!')
-        elif success == False and in_range == 24:
-            print('Calibration was NOT successful! To many points were deleted!')
+        #print('\n'.join(map(str, residuals))) #what does this do?
+
+        if success == False:
+            print('\nCalibration was NOT successful! Too many points were deleted!')
+        elif np.sum(wrong_channels) > 0:
+            print('\nCalibration was NOT successful! Please check warnings!')
+        else:
+            print('\nCalibration was successful!')
+
         # write calibration result in ini file
         with open(os.path.join(config["calibration_data"].get("data_path"), 'constants.ini'), 'w') as configfile:
             if success == True:
@@ -455,7 +440,7 @@ def pass_fail(residuals, l_1):
             config_ini.write(configfile)
     return success
 
-def get_range(name_gain, name_offset,channel):
+def get_range(name_gain,name_offset, channel):
     in_range = False
     """
     Old version:
@@ -478,9 +463,10 @@ def get_range(name_gain, name_offset,channel):
     gain_std = float(config_errs[f'{channel}'][f'{name_gain}_{channel}'])
     # gain criteria: 4 stds
     gain_upper, gain_lower = gain_mean + 4*gain_std, gain_mean - 4*gain_std
+
     offset_mean = float(config_vals[f'{channel}'][f'{name_offset}_{channel}'])
     offset_std = float(config_errs[f'{channel}'][f'{name_offset}_{channel}'])
-    # offset criteria: has to be revised
+    # offset criteria: 4 stds, could be improved
     offset_upper, offset_lower = offset_mean + 4*offset_std, offset_mean - 4*offset_std
 
     if gain > gain_upper:
@@ -493,6 +479,24 @@ def get_range(name_gain, name_offset,channel):
         in_range = True
     else:
         pass
+
+    return in_range
+
+def check_range(name,channel):
+    in_range = False
+    value = float(config_ini[f'{channel}'].get(name))
+    config_vals = configparser.ConfigParser()
+    config_errs = configparser.ConfigParser()
+    config_vals.read('../data/database.ini')
+    config_errs.read('../data/database_std.ini')
+    mean = float(config_vals[f'{channel}'][f'{name}_{channel}'])
+    std = float(config_errs[f'{channel}'][f'{name}_{channel}'])
+    upper, lower = mean + 4*std, mean - 4*std
+    if value > upper or value < lower:
+        in_range = False
+        print(f'Warning! Please check channel {channel}. {name} out of usual range!')
+    else:
+        in_range = True
 
     return in_range
 
