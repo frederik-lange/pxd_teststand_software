@@ -437,12 +437,13 @@ def main():
     else:
         os.mkdir(os.path.join(config["calibration_data"].get("data_path"),"plots"))
 
-    with open('deleted_points.csv', 'w', encoding='UTF8') as csvfile:
+    with open('deleted_points.csv', 'w', encoding='UTF8',newline='') as csvfile:
         fieldnames = ['Channel', 'plot_0', 'plot_1', 'plot_2', 'plot_3', 'plot_4']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
         residuals = []
+
         for channel in range(24):
             path = os.path.join(config["calibration_data"].get("data_path"),f"plots/Channel_{channel}.pdf")
 
