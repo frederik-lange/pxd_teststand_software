@@ -15,6 +15,18 @@ config_ini = configparser.ConfigParser()
 config_err = configparser.ConfigParser()
 config_ini.optionxform = str
 config_err.optionxform = str
+names = ["Unit","Date"]
+for i in range(24):
+    names.append(f"DAC_VOLTAGE_GAIN_{i}")
+    names.append(f"DAC_VOLTAGE_OFFSET_{i}")
+    names.append(f"ADC_U_LOAD_GAIN_{i}")
+    names.append(f"ADC_U_LOAD_OFFSET_{i}")
+    names.append(f"ADC_U_REGULATOR_GAIN_{i}")
+    names.append(f"ADC_U_REGULATOR_OFFSET_{i}")
+    names.append(f"ADC_I_MON_GAIN_{i}")
+    names.append(f"ADC_I_MON_OFFSET_{i}")
+    names.append(f"DAC_CURRENT_GAIN_{i}")
+    names.append(f"DAC_CURRENT_OFFSET_{i}")
 
 def prepare_data(x, y):
     """
@@ -29,20 +41,19 @@ def prepare_data(x, y):
     cut[x == 0] = True
     return x[~cut], y[~cut]
 
-
 def cut_outliers(x, y, x_err, y_err, channel):
     """
-    Cuts points that are too far away from the fit
+    To work properly this function requires values that are normally distributed around a linear slope
+    The function determines a straight line among the values and fits to them.
+    The residuals are computed for all points and the points too far away are removed.
+    Then the final fit is performed.
     """
 
     # range criteria (remove saturation)
     ymax, ymin = np.amax(y), np.amin(y)
     range = ymax - ymin
-    #print(f"Maximum and minimum:", ymax, ymin)
-    #print("Range", range)
     upper_limit = ymin + 0.99 * range
     lower_limit = ymin + 0.01 * range
-    #print(f"Upper limit: {upper_limit}, lower limit: {lower_limit}")
     cut1 = y > upper_limit
     cut2 = y < lower_limit
     cut = cut1 + cut2
@@ -58,18 +69,14 @@ def cut_outliers(x, y, x_err, y_err, channel):
     help_cut1 = grad2 > 10.0
     help_cut2 = grad2 < - 10.0
     help_cut = help_cut1 + help_cut2 + cut
-    #print(f"Mean of grad: {mean_grad}")
-    #print(f"Median of grad: {median_grad}")
 
     # remove false positive points of gradient criteria
     help_cut1 = np.abs(grad) > 1.2 * np.abs(mean_grad)
     help_cut2 = np.abs(grad) < 0.8 * np.abs(mean_grad)
     help_cut = help_cut + help_cut1 + help_cut2
-    #print("y[~helpcut]:", y[~help_cut].size)
 
     # if all points were removed due to outliers, use median instead of mean
     if x[~help_cut].size <= 1:
-        #print("Outlier condition activated!")
         help_cut1 = grad2 > 10.0
         help_cut2 = grad2 < - 10.0
         help_cut = help_cut1 + help_cut2 + cut
@@ -78,57 +85,29 @@ def cut_outliers(x, y, x_err, y_err, channel):
         help_cut2 = np.abs(grad) < 0.8 * np.abs(median_grad)
         help_cut = help_cut + help_cut1 + help_cut2
 
-    # plot gradients
-    """
-    plt.figure()
-    plt.grid()
-    plt.scatter(x[~help_cut], grad[~help_cut], color="black")
-    plt.scatter(x[help_cut], grad[help_cut], color="grey")
-    plt.title(f"First Gradient of Channel {channel}")
-    plt.savefig(f"../data/statistics/Channel {channel}: 1st Gradient")
-    plt.figure()
-    plt.grid()
-    plt.scatter(x[~help_cut], grad2[~help_cut], color="black")
-    plt.scatter(x[help_cut], grad2[help_cut], color="grey")
-    plt.title(f"Second Gradient of Channel {channel}")
-    plt.savefig(f"../data/statistics/Channel {channel}: 2nd Gradient")
-    """
-
     if x[~help_cut].size >= 2:
         # auxiliary fit
         # Saturation got cut, considers all values along a line
-        #print("y[~helpcut]:",y[~help_cut].size)
         popt, pcov = so.curve_fit(linear, x[~help_cut], y[~help_cut], sigma=y_err[~help_cut], absolute_sigma=True)
         m, n = popt[0], popt[1]
-        #plot_with_fit(x[~help_cut], y[~help_cut], x[help_cut], y[help_cut], popt[0], popt[1], "", "", f"Channel {channel}: Plot with auxiliary fit")
 
         # Fit with ODR
         popt_odr, perr_odr, red_chi_2 = fit.fit_odr(fit_func=linear, x=x[~help_cut], y=y[~help_cut], x_err=x_err[~help_cut], y_err=y_err[~help_cut], p0=[popt[0], popt[1]])
-        #print("ODR Chi squared:", red_chi_2)
-        #print("ODR reduced chi squared", red_chi_2 / (len(x[~cut]) - 2))
         m, n = popt_odr[0], popt_odr[1]
 
         # cut outliers
-        # idea: create auxiliary fit and remove the worst values
         r = y - (m * x + n)
         std_r = np.std(r[~cut])
         mean_r = np.mean(r[~cut])
-        #print(f"Standard deviation of residuals: {std_r} \n Mean: {mean_r}")
         # use abs of residuals because res are distributed around zero -> mean is useless
         r = np.abs(r)
         # cut on this
         cut1 = np.abs(r) > 2 * np.abs(np.mean(r))
         cut = cut + cut1
-        #plot_residuals(x, r, cut, f"Channel {channel}: Absolute values of residuals", f"Channel {channel}: Residuals")
 
         # Final Fit
         popt_odr, perr_odr, red_chi_2 = fit.fit_odr(fit_func=linear, x=x[~cut], y=y[~cut], x_err=x_err[~cut], y_err=y_err[~cut], p0=[popt[0], popt[1]])
         m, n = popt_odr[0], popt_odr[1]
-        #print("Final Fit:")
-        #print(f"a = {popt_odr[0]} +/- {perr_odr}")
-        #print(f"b = {popt_odr[1]} +/- {perr_odr}")
-        #plot_with_fit(x[~cut], y[~cut], x[cut], y[cut], popt[0], popt[1], "", "", f"Channel {channel}: Plot with fit after outlier removal")
-        #print(f"ODR Chi Square: {red_chi_2}")
         return x[~cut], y[~cut], x[cut], y[cut], cut
     else:
         print('Too many values cut!')
@@ -231,54 +210,6 @@ def residual_plots(data_x, data_y,x,y,cut_x, cut_y, m, b, n, channel, residuals)
     plt.xlabel(data_x)
     plt.ylabel(data_y)
     plt.legend(prop={'size': 8})
-
-def plot_residuals(x,r, cut, title,name):
-    """
-    ONLY USED FOR STATISTIC PLOTS
-    :param x: x values
-    :param r: residuals
-    :param cut: removed values
-    :param title: Title of the plot
-    :param name: File name
-    :return: None
-    """
-    plt.figure()
-    plt.axhline(0)
-    plt.grid()
-    plt.scatter(x[~cut], r[~cut], color='black')
-    plt.scatter(x[cut], r[cut], color='grey')
-    plt.title(title)
-    plt.savefig(os.path.join('../data/statistics',name))
-    return None
-
-def plot_with_fit(x,y,x_cut,y_cut,m,n,xlabel,ylabel,title):
-    """
-    ONLY USED FOR STATISTIC PLOTS
-    :param x:
-    :param y:
-    :param x_cut:
-    :param y_cut:
-    :param m:
-    :param n:
-    :param xlabel:
-    :param ylabel:
-    :param title:
-    :return:
-    """
-    plt.figure()
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.title(title)
-    plt.scatter(x, y, color='black')
-    #plt.errorbar(x,y,yerr=2.44,fmt='ok')
-    plt.scatter(x_cut, y_cut, color='grey')
-    y_fit = linear(x,m,n)
-    plt.plot(x,y_fit,'r-')
-    y_fit = linear(x_cut,m,n)
-    plt.plot(x_cut,y_fit,'r-')
-    #plt.show()
-    plt.savefig(os.path.join('../data/statistics', title))
-    return None
 
 def help_plots(data, data_x, data_y, title,n):
     x_0 = data[data_x]
@@ -396,7 +327,7 @@ def pass_fail(residuals, l_1):
     plot_2 = []
     plot_3 = []
     plot_4 = []
-    success = True
+    too_many_deleted = False
     with open('deleted_points.csv', 'r') as csvfile:
         plots = csv.reader(csvfile, delimiter=',')
         next(plots)
@@ -411,7 +342,7 @@ def pass_fail(residuals, l_1):
             l = l_1*0.6
             if int(row[1]) > l or int(row[2]) > l or int(row[3]) > l or int(row[4]) > l or int(row[5]) > l:
                 print('Warning! Please check Channel %d. Too many points were deleted.'%(int(row[0])))
-                success = False
+                too_many_deleted = True
         # Compare channels, improve output (make it more clearly)
         # if successful: add to database
         wrong_channels = np.zeros(24)
@@ -423,13 +354,16 @@ def pass_fail(residuals, l_1):
                     wrong_channels[channel] = 1
 
         #print('\n'.join(map(str, residuals))) #what does this do?
-
-        if success == False:
+        success = False
+        if too_many_deleted == True:
             print('\nCalibration was NOT successful! Too many points were deleted!')
+            success = False
         elif np.sum(wrong_channels) > 0:
             print('\nCalibration was NOT successful! Please check warnings!')
+            success = False
         else:
             print('\nCalibration was successful!')
+            success = True
 
         # write calibration result in ini file
         with open(os.path.join(config["calibration_data"].get("data_path"), 'constants.ini'), 'w') as configfile:
@@ -439,48 +373,6 @@ def pass_fail(residuals, l_1):
                 config_ini["Information"]["success"] = "False"
             config_ini.write(configfile)
     return success
-
-def get_range(name_gain,name_offset, channel):
-    in_range = False
-    """
-    Old version:
-    gain_upper = float(config_range[f'{channel}'].get(name_gain + '_UPPER'))
-    gain_lower = float(config_range[f'{channel}'].get(name_gain + '_LOWER'))
-    gain = float(config_ini[f'{channel}'].get(name_gain))
-
-    offset_upper = float(config_range[f'{channel}'].get(name_offset + '_UPPER'))
-    offset_lower = float(config_range[f'{channel}'].get(name_offset + '_LOWER'))
-    offset = float(config_ini[f'{channel}'].get(name_offset))
-    """
-
-    gain = float(config_ini[f'{channel}'].get(name_gain))
-    offset = float(config_ini[f'{channel}'].get(name_offset))
-    config_vals = configparser.ConfigParser()
-    config_errs = configparser.ConfigParser()
-    config_vals.read('../data/database.ini')
-    config_errs.read('../data/database_std.ini')
-    gain_mean = float(config_vals[f'{channel}'][f'{name_gain}_{channel}'])
-    gain_std = float(config_errs[f'{channel}'][f'{name_gain}_{channel}'])
-    # gain criteria: 4 stds
-    gain_upper, gain_lower = gain_mean + 4*gain_std, gain_mean - 4*gain_std
-
-    offset_mean = float(config_vals[f'{channel}'][f'{name_offset}_{channel}'])
-    offset_std = float(config_errs[f'{channel}'][f'{name_offset}_{channel}'])
-    # offset criteria: 4 stds, could be improved
-    offset_upper, offset_lower = offset_mean + 4*offset_std, offset_mean - 4*offset_std
-
-    if gain > gain_upper:
-        in_range = True
-    elif gain < gain_lower:
-        in_range = True
-    elif offset > offset_upper:
-        in_range = True
-    elif offset < offset_lower:
-        in_range = True
-    else:
-        pass
-
-    return in_range
 
 def check_range(name,channel):
     in_range = False
@@ -512,6 +404,30 @@ def write_in_ini(ini,channel,m0,b0,m1,b1,m2,b2,m3,b3,m4,b4):
                                 'DAC_CURRENT_GAIN': round(m4 * 10000, 0),
                                 'DAC_CURRENT_OFFSET': round(b4 * 100, 0)}
 
+def add_to_database(path):
+    with open('../data/database.csv', 'a', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=names)
+        config = configparser.ConfigParser()
+        config.read(os.path.join(path,'constants.ini'))
+        date = str(config['Information']['date'])
+        # print(date)
+        ps = input('Please enter the number of the power supply:')
+        values = [ps, date]
+        for channel in range(24):
+            values.append(config[f'{channel}']['DAC_VOLTAGE_GAIN'])
+            values.append(config[f'{channel}']['DAC_VOLTAGE_OFFSET'])
+            values.append(config[f'{channel}']['ADC_U_LOAD_GAIN'])
+            values.append(config[f'{channel}']['ADC_U_LOAD_OFFSET'])
+            values.append(config[f'{channel}']['ADC_U_REGULATOR_GAIN'])
+            values.append(config[f'{channel}']['ADC_U_REGULATOR_OFFSET'])
+            values.append(config[f'{channel}']['ADC_I_MON_GAIN'])
+            values.append(config[f'{channel}']['ADC_I_MON_OFFSET'])
+            values.append(config[f'{channel}']['DAC_CURRENT_GAIN'])
+            values.append(config[f'{channel}']['DAC_CURRENT_OFFSET'])
+        dict = {names[i]: values[i] for i in range(len(names))}
+        writer.writerow(dict)
+        print("The calibration constants were added to the database.")
+
 def main():
     # Getting path from .ini file
     config.read("path.ini")
@@ -528,7 +444,7 @@ def main():
 
         residuals = []
         for channel in range(24):
-            path = os.path.join(config["calibration_data"].get("data_path"),"plots/Channel_%d.pdf" % channel )
+            path = os.path.join(config["calibration_data"].get("data_path"),f"plots/Channel_{channel}.pdf")
 
             with PdfPages(path) as pdf:
                 """
@@ -546,10 +462,6 @@ def main():
                 columns_UvsU = ["$U_{DAC}$ [mV]", "$U_{out}$ [mV]", "$U_{regulator}$ [mV]", "$U_{load}$ [mV]", "unknown 5","unknown 6"]
                 data_UvsU = read_data(path_UvsU, columns_UvsU)
 
-                # get file creation time on mac
-                #stat = os.stat(path_UvsU)
-                #c_timestamp = stat.st_birthtime
-                #c_timestamp = stat.st_ctime
                 # get file modification time on linux
                 timestamp = os.path.getmtime(path_UvsU)
                 m_time = datetime.date.fromtimestamp(timestamp)
@@ -698,13 +610,16 @@ def main():
             with open(os.path.join(config["calibration_data"].get("data_path"),'constants_err.ini'), 'w') as configfile:
                 config_err.write(configfile)
 
-        #for val in config_ini['0']:
-        #    print(config_ini['0'][val])
         csvfile.close()
         print('Plotting Histogram with Number of deleted points...')
         histo_deleted_points(l_1)
         print('Checking if Calibration was successful...\n')
         success = pass_fail(residuals, l_1)
+        path = config['calibration_data'].get('data_path')
+        if success == True:
+            s = input('Do you want to add the new constants to the database? (yes/no)')
+            if s == 'yes' or s == 'y':
+                add_to_database(path)
         return success
 
 if __name__ == '__main__':

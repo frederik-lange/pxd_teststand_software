@@ -137,8 +137,8 @@ def outliers(x,y):
     print(f"Standard deviation of residuals: {std_r} \n Mean: {mean_r}")
     # cut on this
     # use abs of residuals because res are distribted around zero -> mean is useless
-    r = np.abs(r)
-    cut1 = np.abs(r) > 2 * np.abs(np.mean(r))
+    #r = np.abs(r)
+    cut1 = np.abs(r) > 2 * np.mean(np.abs(r))
     cut = cut + cut1
 
     print(f"Mean and median of abs(r): {np.mean(r)}, {np.median(r)}")
