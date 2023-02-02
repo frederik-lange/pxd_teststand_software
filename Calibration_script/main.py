@@ -393,16 +393,15 @@ def write_in_ini(ini,channel,m0,b0,m1,b1,m2,b2,m3,b3,m4,b4):
                                 'DAC_CURRENT_GAIN': round(m4 * 10000, 0),
                                 'DAC_CURRENT_OFFSET': round(b4 * 100, 0)}
 
-def add_to_database(success):
-    if success == True:
-        s = input('Do you want to add the new constants to the database? (yes/no)')
-        if s == 'yes' or s == 'y':
-            ps = input('Please enter the number of the power supply:')
-            with open('../data/database.csv', 'a', newline='') as csvfile:
-                writer = csv.DictWriter(csvfile, fieldnames=database.names)
-                database.add_constants(writer, os.path.join(path, 'constants.ini'), ps)
-                print("The calibration constants were added to the database.")
-            database.update_range()
+def add_to_database(path):
+    s = input('Do you want to add the new constants to the database? (yes/no)')
+    if s == 'yes' or s == 'y':
+        ps = input('Please enter the number of the power supply:')
+        with open('../data/database.csv', 'a', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=database.names)
+            database.add_constants(writer, os.path.join(path, 'constants.ini'), ps)
+            print("The calibration constants were added to the database.")
+        database.update_range()
 
 def main():
     # Getting path from .ini file
@@ -594,7 +593,8 @@ def main():
         success = pass_fail(residuals, l_1)
         path = config['calibration_data'].get('data_path')
         if __name__ == '__main__':
-
+            if success == True:
+                add_to_database(path)
         return success
 
 if __name__ == '__main__':
