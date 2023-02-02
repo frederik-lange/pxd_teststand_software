@@ -9,24 +9,13 @@ import csv
 from matplotlib import cm
 from matplotlib.cm import ScalarMappable
 import datetime
+import database
 
 config = configparser.ConfigParser()
 config_ini = configparser.ConfigParser()
 config_err = configparser.ConfigParser()
 config_ini.optionxform = str
 config_err.optionxform = str
-names = ["Unit","Date"]
-for i in range(24):
-    names.append(f"DAC_VOLTAGE_GAIN_{i}")
-    names.append(f"DAC_VOLTAGE_OFFSET_{i}")
-    names.append(f"ADC_U_LOAD_GAIN_{i}")
-    names.append(f"ADC_U_LOAD_OFFSET_{i}")
-    names.append(f"ADC_U_REGULATOR_GAIN_{i}")
-    names.append(f"ADC_U_REGULATOR_OFFSET_{i}")
-    names.append(f"ADC_I_MON_GAIN_{i}")
-    names.append(f"ADC_I_MON_OFFSET_{i}")
-    names.append(f"DAC_CURRENT_GAIN_{i}")
-    names.append(f"DAC_CURRENT_OFFSET_{i}")
 
 def prepare_data(x, y):
     """
@@ -404,29 +393,16 @@ def write_in_ini(ini,channel,m0,b0,m1,b1,m2,b2,m3,b3,m4,b4):
                                 'DAC_CURRENT_GAIN': round(m4 * 10000, 0),
                                 'DAC_CURRENT_OFFSET': round(b4 * 100, 0)}
 
-def add_to_database(path):
-    with open('../data/database.csv', 'a', newline='') as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=names)
-        config = configparser.ConfigParser()
-        config.read(os.path.join(path,'constants.ini'))
-        date = str(config['Information']['date'])
-        # print(date)
-        ps = input('Please enter the number of the power supply:')
-        values = [ps, date]
-        for channel in range(24):
-            values.append(config[f'{channel}']['DAC_VOLTAGE_GAIN'])
-            values.append(config[f'{channel}']['DAC_VOLTAGE_OFFSET'])
-            values.append(config[f'{channel}']['ADC_U_LOAD_GAIN'])
-            values.append(config[f'{channel}']['ADC_U_LOAD_OFFSET'])
-            values.append(config[f'{channel}']['ADC_U_REGULATOR_GAIN'])
-            values.append(config[f'{channel}']['ADC_U_REGULATOR_OFFSET'])
-            values.append(config[f'{channel}']['ADC_I_MON_GAIN'])
-            values.append(config[f'{channel}']['ADC_I_MON_OFFSET'])
-            values.append(config[f'{channel}']['DAC_CURRENT_GAIN'])
-            values.append(config[f'{channel}']['DAC_CURRENT_OFFSET'])
-        dict = {names[i]: values[i] for i in range(len(names))}
-        writer.writerow(dict)
-        print("The calibration constants were added to the database.")
+def add_to_database(success):
+    if success == True:
+        s = input('Do you want to add the new constants to the database? (yes/no)')
+        if s == 'yes' or s == 'y':
+            ps = input('Please enter the number of the power supply:')
+            with open('../data/database.csv', 'a', newline='') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=database.names)
+                database.add_constants(writer, os.path.join(path, 'constants.ini'), ps)
+                print("The calibration constants were added to the database.")
+            database.update_range()
 
 def main():
     # Getting path from .ini file
@@ -617,10 +593,8 @@ def main():
         print('Checking if Calibration was successful...\n')
         success = pass_fail(residuals, l_1)
         path = config['calibration_data'].get('data_path')
-        if success == True:
-            s = input('Do you want to add the new constants to the database? (yes/no)')
-            if s == 'yes' or s == 'y':
-                add_to_database(path)
+        if __name__ == '__main__':
+
         return success
 
 if __name__ == '__main__':

@@ -76,7 +76,7 @@ def add_constants(writer, file, ps):
         values.append(config[f'{channel}']['DAC_CURRENT_OFFSET'])
     dict = {names[i] : values[i] for i in range(len(names))}
     # check if values are good
-    # dont add values that have 0 or 1e8
+    # dont add values that have 0 or 1e8 (these are default constants)
     add = True
     for i in dict:
         #print(i, dict[i])
