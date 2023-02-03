@@ -147,6 +147,27 @@ def update_range():
     with open('../data/database_std.ini', 'w') as configfile:
         config.write(configfile)
 
+def ratio_mean_std():
+    config_vals = configparser.ConfigParser()
+    config_vals.read('../data/database.ini')
+    config_errs = configparser.ConfigParser()
+    config_errs.read('../data/database_std.ini')
+    plotnames=['DAC_VOLTAGE_GAIN','DAC_VOLTAGE_OFFSEt','ADC_U_LOAD_GAIN','ADC_U_LOAD_OFFSET','ADC_U_REGULATOR_GAIN','ADC_U_REGULATOR_OFFSET',
+           'ADC_I_MON_GAIN','ADC_I_MON_OFFSET','DAC_CURRENT_GAIN','DAC_CURRENT_OFFSET']
+    with PdfPages('../data/Constants_variance.pdf') as pdf:
+        for n in range(10):
+            x = np.arange(0,24,1)
+            y = np.zeros(24)
+            for channel in range(24):
+                med, std = float(config_vals[f'{channel}'][names[2 + channel * 10 + n]]), float(config_errs[f'{channel}'][names[2 + channel * 10 + n]])
+                varK = np.abs(std/med)
+                y[channel] = varK
+            plt.figure()
+            plt.grid()
+            plt.xlabel('Channels'),plt.ylabel(plotnames[n])
+            plt.bar(x,y)
+            pdf.savefig()
+
 def gauss(x, mu, sigma, a):
     return a * 1.0/np.sqrt(2*np.pi*sigma**2) * np.exp(-(x-mu)**2/2/sigma**2)
 
@@ -158,7 +179,7 @@ def normal_distribution():
     config_errs.read('../data/database_std.ini')
     #print(data.shape)
     with PdfPages('../data/Normal_Distribution') as pdf:
-        count_1, count_tot_1, count_2, count_tot_2, count_3, count_tot_3 = 0, 0, 0, 0, 0, 0
+        count_1, count_tot_1, count_2, count_tot_2, count_3, count_tot_3, count_4, count_tot_4 = 0, 0, 0, 0, 0, 0, 0, 0
         for channel in range(24):
             print(f'Plotting channel {channel}...')
             for n in range(10):
@@ -188,8 +209,10 @@ def normal_distribution():
                 plt.axvline(med + std, color='green')
                 plt.axvline(med - 2*std, color='yellow', label='$2 \sigma$')
                 plt.axvline(med + 2*std, color='yellow',)
-                plt.axvline(med + 3*std, color='red', label='$3 \sigma$')
-                plt.axvline(med - 3*std,color='red')
+                plt.axvline(med + 3*std, color='blue', label='$3 \sigma$')
+                plt.axvline(med - 3*std,color='blue')
+                plt.axvline(med + 4*std, color='red', label='$4 \sigma$')
+                plt.axvline(med - 4*std, color='red')
                 x = np.arange(min,max,0.1)
                 try:
                     popt, pcov = so.curve_fit(gauss, (histo[1][1:]+histo[1][:-1])/2, histo[0], bounds=([med-1*std,0,0],[med+1*std,1*std,1*len(data[names[2+channel*10+n]])]))
@@ -201,7 +224,7 @@ def normal_distribution():
                 plt.legend()
                 # check if values are normally distributed
                 if n%2==0:
-                    for i in range(1,4):
+                    for i in range(1,5):
                         mask = (histo[1][:-1] > med - i*std) & (histo[1][:-1] < med+i*std)
                         sum, sum_total = np.sum(histo[0][mask]), np.sum(histo[0])
                         #print(sum, sum_total, sum/sum_total)
@@ -217,15 +240,20 @@ def normal_distribution():
                             count_tot_3 += 1
                             if sum/sum_total >= 0.9973:
                                 count_3 += 1
+                        if i == 4:
+                            count_tot_4 += 1
+                            if sum/sum_total >= 0.99993666:
+                                count_4 += 1
                 pdf.savefig()
                 plt.close()
-        print(f'Normally distributed values: \n1 sigma: {count_1} of {count_tot_1}\n2 sigma: {count_2} of {count_tot_2}\n3 sigma: {count_3} of {count_tot_3}')
+        print(f'Normally distributed values: \n1 sigma: {count_1} of {count_tot_1}\n2 sigma: {count_2} of {count_tot_2}\n3 sigma: {count_3} of {count_tot_3}\n4 sigma: {count_4} of {count_tot_4}')
 
 def main():
     #fill()
     #scan_and_add('../data/CalibrationData/ps47/PS_47_20221221',47)
-    update_range()
+    #update_range()
     normal_distribution()
+    ratio_mean_std()
     '''
     source = '/home/silab44/pxd_teststand_software_git/pxd_teststand_software/OldCallibrations'
     dest = '/home/silab44/pxd_teststand_software_frederik/data/CalibrationData'

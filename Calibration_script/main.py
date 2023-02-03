@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import configparser
 import os
 import scipy.optimize as so
-from Calibration_script import fit
+import fit
 from matplotlib.backends.backend_pdf import PdfPages
 import csv
 from matplotlib import cm
