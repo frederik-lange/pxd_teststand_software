@@ -164,7 +164,7 @@ def ratio_mean_std():
                 y[channel] = varK
             plt.figure()
             plt.grid()
-            plt.xlabel('Channels'),plt.ylabel(plotnames[n])
+            plt.xlabel('Channels'),plt.title(plotnames[n])
             plt.bar(x,y)
             pdf.savefig()
 
@@ -252,7 +252,7 @@ def main():
     #fill()
     #scan_and_add('../data/CalibrationData/ps47/PS_47_20221221',47)
     #update_range()
-    normal_distribution()
+    #normal_distribution()
     ratio_mean_std()
     '''
     source = '/home/silab44/pxd_teststand_software_git/pxd_teststand_software/OldCallibrations'

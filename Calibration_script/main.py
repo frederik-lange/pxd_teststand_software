@@ -412,6 +412,7 @@ def main():
     else:
         os.mkdir(os.path.join(config["calibration_data"].get("data_path"),"plots"))
 
+    deleted_points = np.zeros([24,5])
     with open('deleted_points.csv', 'w', encoding='UTF8',newline='') as csvfile:
         fieldnames = ['Channel', 'plot_0', 'plot_1', 'plot_2', 'plot_3', 'plot_4']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -511,6 +512,11 @@ def main():
 
                 plt.figtext(0.75, 0.18,title+plot_0+plot_1+plot_2+plot_3+plot_4,bbox=dict(facecolor='lightgrey', edgecolor='red'), fontdict=None)
 
+                deleted_points[channel][0] = l_0-len(x_0)
+                deleted_points[channel][1] = l_1-len(x_1)
+                deleted_points[channel][2] = l_2-len(x_2)
+                deleted_points[channel][3] = l_3-len(x_3)
+                deleted_points[channel][4] = l_4-len(x_4)
                 writer.writerow({'Channel': channel, 'plot_0': '%d'%(l_0-len(x_0)), 'plot_1': '%d'%(l_1-len(x_1)), 'plot_2': '%d'%(l_2-len(x_2)), 'plot_3': '%d'%(l_3-len(x_3)), 'plot_4': '%d'%(l_4-len(x_4))})
 
                 # All 5 plots in one figure
@@ -587,6 +593,7 @@ def main():
                 config_err.write(configfile)
 
         csvfile.close()
+        print(deleted_points)
         print('Plotting Histogram with Number of deleted points...')
         histo_deleted_points(l_1)
         print('Checking if Calibration was successful...\n')
