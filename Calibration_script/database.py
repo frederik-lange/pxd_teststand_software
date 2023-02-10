@@ -15,10 +15,12 @@ from matplotlib.backends.backend_pdf import PdfPages
 from scipy import stats
 import scipy.optimize as so
 
+database = 'database'
+#database = 'PS_87_Constants'
 path = '../data/CalibrationData/'
 #ps = 'unknown'
 
-names = ["Unit","Date"]
+names = ["Unit","Date","validated","used_for_range"]
 for i in range(24):
     names.append(f"DAC_VOLTAGE_GAIN_{i}")
     names.append(f"DAC_VOLTAGE_OFFSET_{i}")
@@ -37,15 +39,15 @@ def initialize():
     Warning! This function deletes all data and creates a new database!
     :return: None
     '''
-    with open('../data/database.csv', 'w+', newline='') as csvfile:
+    with open(f'../data/{database}.csv', 'w+', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=names)
         writer.writeheader()
 
 # read all constants.ini files:
 def scan_and_add(path, ps):
-    with open('../data/database.csv', 'a', newline='') as csvfile:
+    with open(f'../data/{database}.csv', 'a', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=names)
-        n = 0
+        n, invalid = 0, 0
         for root, dirs, files in os.walk(path):
             for file in files:
                 if file.endswith('constants.ini'):
@@ -62,7 +64,7 @@ def add_constants(writer, file, ps):
     config.read(file)
     date = str(config['Information']['date'])
     #print(date)
-    values = [ps,date]
+    values = [ps,date,'no','no']
     for channel in range(24):
         values.append(config[f'{channel}']['DAC_VOLTAGE_GAIN'])
         values.append(config[f'{channel}']['DAC_VOLTAGE_OFFSET'])
@@ -77,14 +79,16 @@ def add_constants(writer, file, ps):
     dict = {names[i] : values[i] for i in range(len(names))}
     # check if values are good
     # dont add values that have 0 or 1e8 (these are default constants)
+    #print(config['Information'].get('success'))
     add = True
     for i in dict:
         #print(i, dict[i])
         if dict[i] == '0' or dict[i] == '100000000':
-            print('Invalid values!')
             add = False
     if add == True:
         writer.writerow(dict)
+    else:
+        print('Invalid values!')
 
 def fill():
     initialize()
@@ -98,17 +102,18 @@ def fill():
 
 def update_range():
     # updates the range of valid constants. Results can be found in the 'database.ini' and 'database_std.ini'
-    data = pd.read_csv('../data/database.csv')
+    data = pd.read_csv(f'../data/{database}.csv')
     #print(data['Unit'].shape)
     #print(data.shape)
     medians = np.zeros(240)
     sigmas = np.zeros(240)
 
+    mask = data['used_for_range'] == 'yes'
     #print('Median',names[2],np.mean(data[names[2]]))
-    medians[:] = np.mean(data[names[2:]])
+    medians[:] = np.mean(data[names[4:]][mask])
     medians = medians.reshape(24,10)
     #print('STD',names[2],np.std(data[names[2]]))
-    sigmas[:] = np.std(data[names[2:]])
+    sigmas[:] = np.std(data[names[4:]][mask])
     sigmas = sigmas.reshape(24,10)
     #print(medians[:][0])
     #print(medians)
@@ -136,35 +141,36 @@ def update_range():
 
     for channel in range(24):
         config[f'{channel}'] = {
-            names[2 + channel*10 + n] : medians[channel][n] for n in range(10)
+            names[4 + channel*10 + n] : medians[channel][n] for n in range(10)
         }
-    with open('../data/database.ini', 'w') as configfile:
+    with open(f'../data/{database}.ini', 'w') as configfile:
         config.write(configfile)
     for channel in range(24):
         config[f'{channel}'] = {
-            names[2 + channel*10 + n] : sigmas[channel][n] for n in range(10)
+            names[4 + channel*10 + n] : sigmas[channel][n] for n in range(10)
         }
-    with open('../data/database_std.ini', 'w') as configfile:
+    with open(f'../data/{database}_std.ini', 'w') as configfile:
         config.write(configfile)
 
 def ratio_mean_std():
     config_vals = configparser.ConfigParser()
-    config_vals.read('../data/database.ini')
+    config_vals.read(f'../data/{database}.ini')
     config_errs = configparser.ConfigParser()
-    config_errs.read('../data/database_std.ini')
+    config_errs.read(f'../data/{database}_std.ini')
     plotnames=['DAC_VOLTAGE_GAIN','DAC_VOLTAGE_OFFSEt','ADC_U_LOAD_GAIN','ADC_U_LOAD_OFFSET','ADC_U_REGULATOR_GAIN','ADC_U_REGULATOR_OFFSET',
            'ADC_I_MON_GAIN','ADC_I_MON_OFFSET','DAC_CURRENT_GAIN','DAC_CURRENT_OFFSET']
-    with PdfPages('../data/Constants_variance.pdf') as pdf:
+    with PdfPages(f'../data/Constants_variance_{database}.pdf') as pdf:
         for n in range(10):
             x = np.arange(0,24,1)
             y = np.zeros(24)
             for channel in range(24):
-                med, std = float(config_vals[f'{channel}'][names[2 + channel * 10 + n]]), float(config_errs[f'{channel}'][names[2 + channel * 10 + n]])
+                med, std = float(config_vals[f'{channel}'][names[4 + channel * 10 + n]]), float(config_errs[f'{channel}'][names[4 + channel * 10 + n]])
                 varK = np.abs(std/med)
                 y[channel] = varK
             plt.figure()
             plt.grid()
             plt.xlabel('Channels'),plt.title(plotnames[n])
+            plt.xticks(np.arange(0,24,1))
             plt.bar(x,y)
             pdf.savefig()
 
@@ -172,13 +178,13 @@ def gauss(x, mu, sigma, a):
     return a * 1.0/np.sqrt(2*np.pi*sigma**2) * np.exp(-(x-mu)**2/2/sigma**2)
 
 def normal_distribution():
-    data = pd.read_csv('./../data/database.csv')
+    data = pd.read_csv(f'./../data/{database}.csv')
     config_vals = configparser.ConfigParser()
-    config_vals.read('../data/database.ini')
+    config_vals.read(f'../data/{database}.ini')
     config_errs = configparser.ConfigParser()
-    config_errs.read('../data/database_std.ini')
+    config_errs.read(f'../data/{database}_std.ini')
     #print(data.shape)
-    with PdfPages('../data/Normal_Distribution') as pdf:
+    with PdfPages(f'../data/Normal_Distribution_{database}') as pdf:
         count_1, count_tot_1, count_2, count_tot_2, count_3, count_tot_3, count_4, count_tot_4 = 0, 0, 0, 0, 0, 0, 0, 0
         for channel in range(24):
             print(f'Plotting channel {channel}...')
@@ -186,9 +192,9 @@ def normal_distribution():
                 plt.subplots()
                 plt.xlabel('Values')
                 plt.ylabel('Counts')
-                plt.title(f'Channel {channel}: {names[2 + channel * 10 + n]}')
+                plt.title(f'Channel {channel}: {names[4 + channel * 10 + n]}')
                 #print(names[2+channel*10+n])
-                med, std = float(config_vals[f'{channel}'][names[2+channel*10+n]]), float(config_errs[f'{channel}'][names[2+channel*10+n]])
+                med, std = float(config_vals[f'{channel}'][names[4+channel*10+n]]), float(config_errs[f'{channel}'][names[4+channel*10+n]])
                 mask = np.full(len(data[names[2+channel*10+n]]), True)
                 if channel == 13 and (n == 6 or n == 7):
                     mask = data['ADC_I_MON_GAIN_13'] > -1500
@@ -196,13 +202,14 @@ def normal_distribution():
                     mask = data['DAC_CURRENT_GAIN_13'] > 90000
                 elif channel == 15 and (n==6 or n == 7):
                     mask = data['ADC_I_MON_GAIN_15'] > -500000
-                max = int(np.max(data[names[2+channel*10+n]][mask]))
-                min = int(np.min(data[names[2+channel*10+n]][mask]))
+                max = int(np.max(data[names[4+channel*10+n]][mask]))
+                min = int(np.min(data[names[4+channel*10+n]][mask]))
                 diff = max-min
-                if diff > 200:
-                    diff = 200
-
-                histo = plt.hist(data[names[2+channel*10+n]][mask],bins=diff)
+                if diff > 100:
+                    diff = 100
+                if diff < 1:
+                    diff = 1
+                histo = plt.hist(data[names[4+channel*10+n]][mask],bins=diff)
                 #print(histo[0], "\n", histo[1])
                 plt.axvline(med, color='black', label='mean')
                 plt.axvline(med - std, color='green', label='$1 \sigma$')
@@ -219,8 +226,9 @@ def normal_distribution():
                     #print(popt)
                     x = np.arange(med-3*std, med+3*std,0.1)
                     plt.plot(x, gauss(x,*popt),label='fitted gauss curve')
-                except RuntimeError:
+                except (RuntimeError, ValueError):
                     print("Gauss function could not be fitted!")
+
                 plt.legend()
                 # check if values are normally distributed
                 if n%2==0:
@@ -250,8 +258,9 @@ def normal_distribution():
 
 def main():
     #fill()
-    #scan_and_add('../data/CalibrationData/ps47/PS_47_20221221',47)
-    #update_range()
+    #initialize()
+    #scan_and_add(path,26)
+    update_range()
     #normal_distribution()
     ratio_mean_std()
     '''

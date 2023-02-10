@@ -13,7 +13,7 @@ import os
 def main():
     config = configparser.ConfigParser()
     config.read('path.ini')
-    for i in range(80,90):
+    for i in range(20,110):
         for root, dirs, files in os.walk(f'../data/CalibrationData/ps{i}'):
             for dir in dirs:
                 if os.path.exists(os.path.join(root,dir,'Channel_0_U_vs_U.dat')):
