@@ -341,7 +341,7 @@ def check_range(name,channel):
     config_errs.read('../data/database_std.ini')
     mean = float(config_vals[f'{channel}'][f'{name}_{channel}'])
     std = float(config_errs[f'{channel}'][f'{name}_{channel}'])
-    upper, lower = mean + 5*std, mean - 5*std
+    upper, lower = mean + 4*std, mean - 4*std
     if value > upper or value < lower:
         in_range = False
         print(f'Warning! Please check channel {channel}. {name} out of usual range!')

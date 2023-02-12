@@ -100,6 +100,16 @@ def fill():
             print(f"PS number {i}")
             scan_and_add(path_ps,ps)
 
+def define_range():
+    config = configparser.ConfigParser()
+    for root, dirs, files in os.walk(path):
+        for file in files:
+            if file.endswith('constants.ini'):
+                path_file = os.path.join(root, file)
+                config.read(f'{path}')
+    # read database.csv file
+    # if constants.ini file says 'success', change 'validated' entry
+
 def update_range():
     # updates the range of valid constants. Results can be found in the 'database.ini' and 'database_std.ini'
     data = pd.read_csv(f'../data/{database}.csv')
@@ -197,11 +207,13 @@ def normal_distribution():
                 med, std = float(config_vals[f'{channel}'][names[4+channel*10+n]]), float(config_errs[f'{channel}'][names[4+channel*10+n]])
                 mask = np.full(len(data[names[2+channel*10+n]]), True)
                 if channel == 13 and (n == 6 or n == 7):
-                    mask = data['ADC_I_MON_GAIN_13'] > -1500
+                    mask = (data['ADC_I_MON_GAIN_13'] > -1500) & (data['used_for_range'] == 'yes')
                 elif channel == 13 and (n==8 or n == 9):
-                    mask = data['DAC_CURRENT_GAIN_13'] > 90000
+                    mask = (data['DAC_CURRENT_GAIN_13'] > 90000) & (data['used_for_range'] == 'yes')
                 elif channel == 15 and (n==6 or n == 7):
-                    mask = data['ADC_I_MON_GAIN_15'] > -500000
+                    mask = (data['ADC_I_MON_GAIN_15'] > -500000) & (data['used_for_range'] == 'yes')
+                else:
+                    mask = data['used_for_range'] == 'yes'
                 max = int(np.max(data[names[4+channel*10+n]][mask]))
                 min = int(np.min(data[names[4+channel*10+n]][mask]))
                 diff = max-min
@@ -261,7 +273,7 @@ def main():
     #initialize()
     #scan_and_add(path,26)
     update_range()
-    #normal_distribution()
+    normal_distribution()
     ratio_mean_std()
     '''
     source = '/home/silab44/pxd_teststand_software_git/pxd_teststand_software/OldCallibrations'
