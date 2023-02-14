@@ -88,8 +88,8 @@ def cut_outliers(x, y, channel, xlabel, ylabel, title):
     #print(np.gradient(y))
     #print(y[cut])
     upper,lower = tolerance,-tolerance
-    scatter_grad(x,np.gradient(y),xlabel,f"Gradients of {ylabel}",f"Channel {channel} {title}: Plot of gradients",tolerance)
-    scatter_cut(x[~cut],y[~cut],x[cut],y[cut],xlabel,f"Gradients of {ylabel}",f"Channel {channel} {title}: Plot cut by gradient criteria")
+    scatter_grad(x,np.gradient(y),xlabel,f"Gradients of {ylabel}",f"Channel_{channel}_{title}:_Plot_of_gradients",tolerance)
+    scatter_cut(x[~cut],y[~cut],x[cut],y[cut],xlabel,f"Gradients of {ylabel}",f"Channel_{channel}_{title}:_Plot_cut_by_gradient_criteria")
 
     if x[~cut].size == 0:
         return x[~cut], y[~cut], x[cut], y[cut]
@@ -99,8 +99,8 @@ def cut_outliers(x, y, channel, xlabel, ylabel, title):
         #print(f'For slopes: mean: {mean}, standard deviation: {std}')
         #cut to  2 sigma
         cut[np.logical_or((slopes >= 2 * std + mean), (slopes <= mean - 2 * std))] = True
-        scatter_slope(x,slopes,xlabel,f"Slopes of {ylabel}",f"Channel {channel} {title}: Plot of slopes",mean,std)
-        scatter_cut(x[~cut],y[~cut],x[cut],y[cut],xlabel,f"Slopes of {ylabel}",f"Channel {channel} {title}: Plot cut by standard deviation of slopes")
+        scatter_slope(x,slopes,xlabel,f"Slopes_of_{ylabel}",f"Channel_{channel}_{title}:_Plot_of_slopes",mean,std)
+        scatter_cut(x[~cut],y[~cut],x[cut],y[cut],xlabel,f"Slopes_of_{ylabel}",f"Channel_{channel}_{title}:_Plot_cut_by_standard_deviation_of_slopes")
 
     return x[~cut], y[~cut],x[cut], y[cut]
 
@@ -307,7 +307,7 @@ if __name__ == '__main__':
         mask = (x>fit_range_high)&(x<fit_range_low)
         plt.plot(x[mask],x[mask]*m+n,'r-')
         # plt.show()
-        plt.savefig(os.path.join('../data/validation', f'Channel {channel} root analysis'))
+        plt.savefig(os.path.join('../data/validation', f'Channel_{channel}_root_analysis'))
         plt.close()
 
 """

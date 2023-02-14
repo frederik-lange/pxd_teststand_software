@@ -64,7 +64,11 @@ def add_constants(writer, file, ps):
     config.read(file)
     date = str(config['Information']['date'])
     #print(date)
-    values = [ps,date,'no','no']
+    autom_success = config['Information']['success']
+    if autom_success == 'True':
+        validated = 'yes'
+    else: validated = 'no'
+    values = [ps,date,validated,'no']
     for channel in range(24):
         values.append(config[f'{channel}']['DAC_VOLTAGE_GAIN'])
         values.append(config[f'{channel}']['DAC_VOLTAGE_OFFSET'])
@@ -93,7 +97,7 @@ def add_constants(writer, file, ps):
 def fill():
     initialize()
     # go through all possible ps folders
-    for i in range(21,100):
+    for i in range(21,110):
         path_ps = os.path.join(path,f"ps{i}")
         if os.path.exists(path_ps):
             ps = i
@@ -102,13 +106,36 @@ def fill():
 
 def define_range():
     config = configparser.ConfigParser()
+    data = pd.read_csv(f'../data/{database}.csv')
     for root, dirs, files in os.walk(path):
         for file in files:
             if file.endswith('constants.ini'):
                 path_file = os.path.join(root, file)
-                config.read(f'{path}')
+                config.read(f'{path_file}')
+                #print(config["Information"].get("success"))
+                if config['Information']['success'] == 'True' :
+                    list = []
+                    for channel in range(24):
+                        list.append(float(config[f'{channel}']['DAC_VOLTAGE_GAIN']))
+                        list.append(float(config[f'{channel}']['DAC_VOLTAGE_OFFSET']))
+                        list.append(float(config[f'{channel}']['ADC_U_LOAD_GAIN']))
+                        list.append(float(config[f'{channel}']['ADC_U_LOAD_OFFSET']))
+                        list.append(float(config[f'{channel}']['ADC_U_REGULATOR_GAIN']))
+                        list.append(float(config[f'{channel}']['ADC_U_REGULATOR_OFFSET']))
+                        list.append(float(config[f'{channel}']['ADC_I_MON_GAIN']))
+                        list.append(float(config[f'{channel}']['ADC_I_MON_OFFSET']))
+                        list.append(float(config[f'{channel}']['DAC_CURRENT_GAIN']))
+                        list.append(float(config[f'{channel}']['DAC_CURRENT_OFFSET']))
+
+    #print(list)
+    data_validated = data[data['validated'] == 'yes']
+    print(data_validated)
+    mask = (data[names[4:]]==list)
+    #print(data[names[4:]][mask])
+    #mask = data[4:,0] == list
     # read database.csv file
     # if constants.ini file says 'success', change 'validated' entry
+
 
 def update_range():
     # updates the range of valid constants. Results can be found in the 'database.ini' and 'database_std.ini'
@@ -161,6 +188,7 @@ def update_range():
         }
     with open(f'../data/{database}_std.ini', 'w') as configfile:
         config.write(configfile)
+    print("Range of calibration constants was updated!")
 
 def ratio_mean_std():
     config_vals = configparser.ConfigParser()
@@ -270,8 +298,8 @@ def normal_distribution():
 
 def main():
     #fill()
-    #initialize()
     #scan_and_add(path,26)
+    #define_range()
     update_range()
     normal_distribution()
     ratio_mean_std()

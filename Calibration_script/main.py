@@ -455,14 +455,11 @@ def main():
             x_4,y_4,l_4 = get_and_prepare(data_IlimitvsI, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]')
             x_err_4 = np.ones_like(x_4)*3.05
             y_err_4= SMU_I_error(y_4, channel)
-            # special monitoring for channel 13
+            # special monitoring for channel 13 (uA)
             if channel == 13:
                 y_4 = y_4*1000
             x_4, y_4, x_cut_4,y_cut_4, cut_4 = cut_outliers(x_4, y_4, x_err_4, y_err_4, channel)
             m_4, b_4, m_err_4, b_err_4 = plot_and_fit(x_4, y_4, x_err_4[~cut_4], y_err_4[~cut_4], x_cut_4,y_cut_4, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]', '$I_{lim,SMU} vs. I_{lim,DAC}$',5)
-            #if channel == 13:
-            #    m_4 = m_4 * 1000
-            #    b_4 = b_4 * 1000
 
             # Calculating number of deleted points in each plot
             title = "$\\bf{Number\:of\:deleted\:points:}$\n\n"
