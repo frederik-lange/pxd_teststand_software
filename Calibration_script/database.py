@@ -208,6 +208,7 @@ def ratio_mean_std():
             plt.figure()
             plt.grid()
             plt.xlabel('Channels'),plt.title(plotnames[n])
+            plt.ylabel('Constants Variance')
             plt.xticks(np.arange(0,24,1))
             plt.bar(x,y)
             pdf.savefig()
@@ -233,7 +234,7 @@ def normal_distribution():
                 plt.title(f'Channel {channel}: {names[4 + channel * 10 + n]}')
                 #print(names[2+channel*10+n])
                 med, std = float(config_vals[f'{channel}'][names[4+channel*10+n]]), float(config_errs[f'{channel}'][names[4+channel*10+n]])
-                mask = np.full(len(data[names[2+channel*10+n]]), True)
+                #mask = np.full(len(data[names[2+channel*10+n]]), True)
                 if channel == 13 and (n == 6 or n == 7):
                     mask = (data['ADC_I_MON_GAIN_13'] > -1500) & (data['used_for_range'] == 'yes')
                 elif channel == 13 and (n==8 or n == 9):
