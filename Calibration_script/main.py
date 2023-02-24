@@ -308,7 +308,7 @@ def pass_fail(l_1, deleted_points):
         add = True
         for name in ['DAC_VOLTAGE_GAIN','DAC_VOLTAGE_OFFSET','ADC_U_LOAD_GAIN','ADC_U_LOAD_OFFSET','ADC_U_REGULATOR_GAIN','ADC_U_REGULATOR_OFFSET',
                      'ADC_I_MON_GAIN','ADC_I_MON_OFFSET','DAC_CURRENT_GAIN','DAC_CURRENT_OFFSET']:
-            if check_range(name,channel) == False:
+            if check_range(name,channel,config_ini) == False:
                 wrong_channels[channel] = 1
 
     #print('\n'.join(map(str, residuals))) #what does this do?
@@ -332,7 +332,7 @@ def pass_fail(l_1, deleted_points):
         config_ini.write(configfile)
     return success
 
-def check_range(name,channel):
+def check_range(name,channel,config_ini):
     in_range = False
     value = float(config_ini[f'{channel}'].get(name))
     config_vals = configparser.ConfigParser()

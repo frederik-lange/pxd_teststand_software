@@ -303,9 +303,9 @@ def main():
     #fill()
     #scan_and_add(path,26)
     #define_range()
-    update_range()
-    normal_distribution()
-    ratio_mean_std()
+    #update_range()
+    #normal_distribution()
+    #ratio_mean_std()
     #boxplot()
 
     '''
