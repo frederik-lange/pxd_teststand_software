@@ -104,39 +104,6 @@ def fill():
             print(f"PS number {i}")
             scan_and_add(path_ps,ps)
 
-def define_range():
-    config = configparser.ConfigParser()
-    data = pd.read_csv(f'../data/{database}.csv')
-    for root, dirs, files in os.walk(path):
-        for file in files:
-            if file.endswith('constants.ini'):
-                path_file = os.path.join(root, file)
-                config.read(f'{path_file}')
-                #print(config["Information"].get("success"))
-                if config['Information']['success'] == 'True' :
-                    list = []
-                    for channel in range(24):
-                        list.append(float(config[f'{channel}']['DAC_VOLTAGE_GAIN']))
-                        list.append(float(config[f'{channel}']['DAC_VOLTAGE_OFFSET']))
-                        list.append(float(config[f'{channel}']['ADC_U_LOAD_GAIN']))
-                        list.append(float(config[f'{channel}']['ADC_U_LOAD_OFFSET']))
-                        list.append(float(config[f'{channel}']['ADC_U_REGULATOR_GAIN']))
-                        list.append(float(config[f'{channel}']['ADC_U_REGULATOR_OFFSET']))
-                        list.append(float(config[f'{channel}']['ADC_I_MON_GAIN']))
-                        list.append(float(config[f'{channel}']['ADC_I_MON_OFFSET']))
-                        list.append(float(config[f'{channel}']['DAC_CURRENT_GAIN']))
-                        list.append(float(config[f'{channel}']['DAC_CURRENT_OFFSET']))
-
-    #print(list)
-    data_validated = data[data['validated'] == 'yes']
-    print(data_validated)
-    mask = (data[names[4:]]==list)
-    #print(data[names[4:]][mask])
-    #mask = data[4:,0] == list
-    # read database.csv file
-    # if constants.ini file says 'success', change 'validated' entry
-
-
 def update_range():
     # updates the range of valid constants. Results can be found in the 'database.ini' and 'database_std.ini'
     data = pd.read_csv(f'../data/{database}.csv')
@@ -195,7 +162,7 @@ def ratio_mean_std():
     config_vals.read(f'../data/{database}.ini')
     config_errs = configparser.ConfigParser()
     config_errs.read(f'../data/{database}_std.ini')
-    plotnames=['DAC_VOLTAGE_GAIN','DAC_VOLTAGE_OFFSEt','ADC_U_LOAD_GAIN','ADC_U_LOAD_OFFSET','ADC_U_REGULATOR_GAIN','ADC_U_REGULATOR_OFFSET',
+    plotnames=['DAC_VOLTAGE_GAIN','DAC_VOLTAGE_OFFSET','ADC_U_LOAD_GAIN','ADC_U_LOAD_OFFSET','ADC_U_REGULATOR_GAIN','ADC_U_REGULATOR_OFFSET',
            'ADC_I_MON_GAIN','ADC_I_MON_OFFSET','DAC_CURRENT_GAIN','DAC_CURRENT_OFFSET']
     with PdfPages(f'../data/Constants_variance_{database}.pdf') as pdf:
         for n in range(10):
@@ -297,6 +264,41 @@ def normal_distribution():
                 plt.close()
         print(f'Normally distributed values: \n1 sigma: {count_1} of {count_tot_1}\n2 sigma: {count_2} of {count_tot_2}\n3 sigma: {count_3} of {count_tot_3}\n4 sigma: {count_4} of {count_tot_4}')
 
+def boxplot():
+    data = pd.read_csv(f'./../data/database_save.csv')
+    plotnames = ['DAC_VOLTAGE_GAIN', 'DAC_VOLTAGE_OFFSET', 'ADC_U_LOAD_GAIN', 'ADC_U_LOAD_OFFSET',
+                 'ADC_U_REGULATOR_GAIN', 'ADC_U_REGULATOR_OFFSET',
+                 'ADC_I_MON_GAIN', 'ADC_I_MON_OFFSET', 'DAC_CURRENT_GAIN', 'DAC_CURRENT_OFFSET']
+    with PdfPages(f'../data/database_boxplots.pdf') as pdf:
+        for channel in range(24):
+            print(f"Plotting Channel {channel}...")
+            #x = np.arange(0,24,1)
+            y = np.zeros((10,len(data[names[0]])))
+            list = []
+            for n in range(10):
+                y[n] = data[names[4 + n*24 + channel]]
+                list.append(y[n])
+            #plt.xlabel('Channels')
+            #plt.title(plotnames[n])
+            #plt.ylabel('DAC voltage gain values')
+            #plt.xticks(np.arange(0,24,1))
+            fig,ax = plt.subplots(2,5)
+            fig.set_figheight(8)
+            fig.set_figwidth(12)
+            fig.suptitle(f'Channel {channel}')
+            for n in range(10):
+                if n <= 4:
+                    a = 0
+                else:
+                    a = 1
+                plt.grid()
+                ax[a,n%5].boxplot(y[n])
+                ax[a,n%5].set_title(plotnames[n])
+            plt.tight_layout()
+            plt.subplots_adjust(left=0.1,bottom=0.1,right=0.9,top=0.9)
+            pdf.savefig()
+            plt.close(fig)
+
 def main():
     #fill()
     #scan_and_add(path,26)
@@ -304,6 +306,8 @@ def main():
     update_range()
     normal_distribution()
     ratio_mean_std()
+    #boxplot()
+
     '''
     source = '/home/silab44/pxd_teststand_software_git/pxd_teststand_software/OldCallibrations'
     dest = '/home/silab44/pxd_teststand_software_frederik/data/CalibrationData'

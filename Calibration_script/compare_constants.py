@@ -9,9 +9,9 @@ import configparser
 import os
 from matplotlib.backends.backend_pdf import PdfPages
 
-path1 = '../data/CalibrationData/ps87/PS_87_20230112'
-path2 = '../data/CalibrationData/ps87/PS_87_20230221_no_OVP'
-pdf_path = '../data/CalibrationData/ps87/PS_87_compare_ovp_to_no_ovp'
+path1 = '../data/CalibrationData/ps105/PS_105_20230210_no_OVP'
+path2 = '../data/CalibrationData/ps105/PS_105_20230204'
+pdf_path = '../data/CalibrationData/ps105/PS_105_compare_test.pdf'
 delta_gains, delta_offsets = np.zeros(24), np.zeros(24)
 
 def gain_diff(gain1, gain2):
