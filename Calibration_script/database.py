@@ -15,9 +15,9 @@ from matplotlib.backends.backend_pdf import PdfPages
 from scipy import stats
 import scipy.optimize as so
 
-database = 'database'
-#database = 'PS_87_Constants'
-path = '../data/CalibrationData/'
+#database = 'database'
+database = 'PS_105_constants'
+path = '../data/CalibrationData/ps105'
 #ps = 'unknown'
 
 names = ["Unit","Date","validated","used_for_range"]
@@ -113,6 +113,7 @@ def update_range():
     sigmas = np.zeros(240)
 
     mask = data['used_for_range'] == 'yes'
+    #mask = np.ones(len(data[names[0]]),dtype=bool)
     #print('Median',names[2],np.mean(data[names[2]]))
     medians[:] = np.mean(data[names[4:]][mask])
     medians = medians.reshape(24,10)
@@ -143,15 +144,22 @@ def update_range():
 
     config = configparser.ConfigParser()
 
+    # cut away name endings for some .ini-files:
+    for n in range(4,len(names)):
+        if n<104:
+            names[n] = str(names[n])[:-2]
+        else:
+            names[n] = str(names[n])[:-3]
+
     for channel in range(24):
         config[f'{channel}'] = {
-            names[4 + channel*10 + n] : medians[channel][n] for n in range(10)
+            str(names[4 + channel*10 + n]) : medians[channel][n] for n in range(10)
         }
     with open(f'../data/{database}.ini', 'w') as configfile:
         config.write(configfile)
     for channel in range(24):
         config[f'{channel}'] = {
-            names[4 + channel*10 + n] : sigmas[channel][n] for n in range(10)
+            str(names[4 + channel*10 + n]) : sigmas[channel][n] for n in range(10)
         }
     with open(f'../data/{database}_std.ini', 'w') as configfile:
         config.write(configfile)
@@ -264,50 +272,14 @@ def normal_distribution():
                 plt.close()
         print(f'Normally distributed values: \n1 sigma: {count_1} of {count_tot_1}\n2 sigma: {count_2} of {count_tot_2}\n3 sigma: {count_3} of {count_tot_3}\n4 sigma: {count_4} of {count_tot_4}')
 
-def boxplot():
-    data = pd.read_csv(f'./../data/database_save.csv')
-    plotnames = ['DAC_VOLTAGE_GAIN', 'DAC_VOLTAGE_OFFSET', 'ADC_U_LOAD_GAIN', 'ADC_U_LOAD_OFFSET',
-                 'ADC_U_REGULATOR_GAIN', 'ADC_U_REGULATOR_OFFSET',
-                 'ADC_I_MON_GAIN', 'ADC_I_MON_OFFSET', 'DAC_CURRENT_GAIN', 'DAC_CURRENT_OFFSET']
-    with PdfPages(f'../data/database_boxplots.pdf') as pdf:
-        for channel in range(24):
-            print(f"Plotting Channel {channel}...")
-            #x = np.arange(0,24,1)
-            y = np.zeros((10,len(data[names[0]])))
-            list = []
-            for n in range(10):
-                y[n] = data[names[4 + n*24 + channel]]
-                list.append(y[n])
-            #plt.xlabel('Channels')
-            #plt.title(plotnames[n])
-            #plt.ylabel('DAC voltage gain values')
-            #plt.xticks(np.arange(0,24,1))
-            fig,ax = plt.subplots(2,5)
-            fig.set_figheight(8)
-            fig.set_figwidth(12)
-            fig.suptitle(f'Channel {channel}')
-            for n in range(10):
-                if n <= 4:
-                    a = 0
-                else:
-                    a = 1
-                plt.grid()
-                ax[a,n%5].boxplot(y[n])
-                ax[a,n%5].set_title(plotnames[n])
-            plt.tight_layout()
-            plt.subplots_adjust(left=0.1,bottom=0.1,right=0.9,top=0.9)
-            pdf.savefig()
-            plt.close(fig)
-
 def main():
+    # warning! unse fill() only for full database!
     #fill()
-    #scan_and_add(path,26)
+    #scan_and_add(path,105)
     #define_range()
-    #update_range()
+    update_range()
     #normal_distribution()
     #ratio_mean_std()
-    #boxplot()
-
     '''
     source = '/home/silab44/pxd_teststand_software_git/pxd_teststand_software/OldCallibrations'
     dest = '/home/silab44/pxd_teststand_software_frederik/data/CalibrationData'
