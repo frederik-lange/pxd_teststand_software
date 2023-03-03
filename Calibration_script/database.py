@@ -145,11 +145,12 @@ def update_range():
     config = configparser.ConfigParser()
 
     # cut away name endings for some .ini-files:
-    for n in range(4,len(names)):
-        if n<104:
-            names[n] = str(names[n])[:-2]
-        else:
-            names[n] = str(names[n])[:-3]
+    if False:
+        for n in range(4,len(names)):
+            if n<104:
+                names[n] = str(names[n])[:-2]
+            else:
+                names[n] = str(names[n])[:-3]
 
     for channel in range(24):
         config[f'{channel}'] = {
@@ -208,6 +209,12 @@ def normal_distribution():
                 plt.ylabel('Counts')
                 plt.title(f'Channel {channel}: {names[4 + channel * 10 + n]}')
                 #print(names[2+channel*10+n])
+                if False:
+                    for x in range(4, len(names)):
+                        if x < 104:
+                            names[n] = str(names[n])[:-2]
+                        else:
+                            names[n] = str(names[n])[:-3]
                 med, std = float(config_vals[f'{channel}'][names[4+channel*10+n]]), float(config_errs[f'{channel}'][names[4+channel*10+n]])
                 #mask = np.full(len(data[names[2+channel*10+n]]), True)
                 if channel == 13 and (n == 6 or n == 7):
@@ -277,9 +284,9 @@ def main():
     #fill()
     #scan_and_add(path,105)
     #define_range()
-    update_range()
+    #update_range()
     #normal_distribution()
-    #ratio_mean_std()
+    ratio_mean_std()
     '''
     source = '/home/silab44/pxd_teststand_software_git/pxd_teststand_software/OldCallibrations'
     dest = '/home/silab44/pxd_teststand_software_frederik/data/CalibrationData'

@@ -556,6 +556,7 @@ def main():
     success = pass_fail(l_1,deleted_points)
     path = config['calibration_data'].get('data_path')
     if __name__ == '__main__':
+        pass
         if success == True:
             add_to_database(path)
     return success
