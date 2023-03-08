@@ -28,13 +28,14 @@ def scatter_grad(x,y,xlabel,ylabel,title,cutoff):
     plt.figure()
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    #plt.title(title)
+    plt.title(title)
     plt.scatter(x,y)
     if y.mean() > 0:
         cutoff = np.abs(cutoff)
     else:
         cutoff = -np.abs(cutoff)
-    plt.axhline(cutoff,label='threshhold',color='red')
+    plt.axhline(cutoff,label='threshold',color='red')
+    plt.axhline(-cutoff, color='red')
     plt.legend()
     #plt.show()
     plt.savefig(os.path.join('../data/validation',title))
@@ -44,7 +45,7 @@ def scatter_slope(x,y,xlabel,ylabel,title,mean,std):
     plt.figure()
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    #plt.title(title)
+    plt.title(title)
     plt.scatter(x,y)
     upper, lower = mean + 2 * std, mean - 2 * std
     plt.axhline(upper,label='threshhold',color='red')
@@ -88,8 +89,8 @@ def cut_outliers(x, y, channel, xlabel, ylabel, title):
     #print(np.gradient(y))
     #print(y[cut])
     upper,lower = tolerance,-tolerance
-    scatter_grad(x,np.gradient(y),xlabel,f"Gradients of {ylabel}",f"Channel_{channel}_{title}:_Plot_of_gradients",tolerance)
-    scatter_cut(x[~cut],y[~cut],x[cut],y[cut],xlabel,f"Gradients of {ylabel}",f"Channel_{channel}_{title}:_Plot_cut_by_gradient_criteria")
+    scatter_grad(x,np.gradient(y),xlabel,f"Gradients of {ylabel}",f"Channel_{channel}_${title}$_Plot_of_gradients",tolerance)
+    scatter_cut(x[~cut],y[~cut],x[cut],y[cut],xlabel,f"Gradients of {ylabel}",f"Channel_{channel}_${title}$_Plot_cut_by_gradient_criteria")
 
     if x[~cut].size == 0:
         return x[~cut], y[~cut], x[cut], y[cut]
@@ -99,8 +100,8 @@ def cut_outliers(x, y, channel, xlabel, ylabel, title):
         #print(f'For slopes: mean: {mean}, standard deviation: {std}')
         #cut to  2 sigma
         cut[np.logical_or((slopes >= 2 * std + mean), (slopes <= mean - 2 * std))] = True
-        scatter_slope(x,slopes,xlabel,f"Slopes_of_{ylabel}",f"Channel_{channel}_{title}:_Plot_of_slopes",mean,std)
-        scatter_cut(x[~cut],y[~cut],x[cut],y[cut],xlabel,f"Slopes_of_{ylabel}",f"Channel_{channel}_{title}:_Plot_cut_by_standard_deviation_of_slopes")
+        scatter_slope(x,slopes,xlabel,f"Slopes of {ylabel}",f"Channel_{channel}_${title}$_Plot_of_slopes",mean,std)
+        scatter_cut(x[~cut],y[~cut],x[cut],y[cut],xlabel,f"Slopes of {ylabel}",f"Channel_{channel}_${title}$_Plot_cut_by_standard_deviation_of_slopes")
 
     return x[~cut], y[~cut],x[cut], y[cut]
 
@@ -271,13 +272,13 @@ if __name__ == '__main__':
         x_2, y_2, l_2 = main.get_and_prepare(data_UvsU, '$U_{out}$ [mV]', '$U_{load}$ [mV]')
         x_3, y_3, l_3 = main.get_and_prepare(data_IvsI, '$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
         x_4, y_4, l_4 = main.get_and_prepare(data_IlimitvsI, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]')
-        """
+
         x_0, y_0, x_cut_0, y_cut_0 = cut_outliers(x_0, y_0, channel, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]', "U_{DAC}")
         x_1, y_1, x_cut_1, y_cut_1 = cut_outliers(x_1, y_1, channel, '$U_{out}$ [mV]', '$U_{regulator}$ [mV]', "U_{Regulator}")
         x_2, y_2, x_cut_2, y_cut_2 = cut_outliers(x_2, y_2, channel, '$U_{out}$ [mV]', '$U_{load}$ [mV]', "U_{Load}")
         x_3, y_3, x_cut_3, y_cut_3 = cut_outliers(x_3, y_3, channel, '$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]', "I_{OutMon}")
         x_4, y_4, x_cut_4, y_cut_4 = cut_outliers(x_4, y_4, channel, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]', "I_{Limit}")
-        """
+
         x_0, y_0, l_0 = main.get_and_prepare(data_UvsU, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]')
         x_1, y_1, l_1 = main.get_and_prepare(data_UvsU, '$U_{out}$ [mV]', '$U_{regulator}$ [mV]')
         x_2, y_2, l_2 = main.get_and_prepare(data_UvsU, '$U_{out}$ [mV]', '$U_{load}$ [mV]')
@@ -291,6 +292,8 @@ if __name__ == '__main__':
 
         root_chisquare = np.sum((y_3 - y_fit)**2/y_fit)
         print(f"CHI SQUARE: {root_chisquare}")
+
+        """
         #x_0, y_0, x_cut_0_gc, y_cut_0_gc = graph_Cleaner(x_0,y_0)
         #scatter_cut(x_0, y_0, x_cut_0_gc, y_cut_0_gc, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]', f"Channel {channel}: GraphCleaner")
         #x_2, y_2, x_cut_2_gc, y_cut_2_gc = graph_Cleaner(x_2, y_2)
@@ -309,6 +312,7 @@ if __name__ == '__main__':
         # plt.show()
         plt.savefig(os.path.join('../data/validation', f'Channel_{channel}_root_analysis'))
         plt.close()
+        """
 
 """
     For Channel 21

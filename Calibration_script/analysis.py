@@ -19,6 +19,31 @@ for i in range(24):
     names.append(f"DAC_CURRENT_GAIN_{i}")
     names.append(f"DAC_CURRENT_OFFSET_{i}")
 
+channel_names = ['(dhp-io)',
+'(sw-dvdd)',
+'(dcd-dvdd)',
+'(dhp-core)',
+'(dcd-refin)',
+'(source)',
+'(dcd-avdd)',
+'(amplow)',
+'(ccg1)',
+'(ccg2)',
+'(drift)',
+'(ccg3)',
+'(poly)',
+'(HV)',
+'(guard)',
+'(bulk)',
+'(gate-on1)',
+'(gate-on2)',
+'(gate-off)',
+'(gate-on3)',
+'(clear-on)',
+'(sw-refin)',
+'(sw-sub)',
+'(clear-off)']
+
 def check_all():
     configPath = configparser.ConfigParser()
     config = configparser.ConfigParser()
@@ -96,11 +121,12 @@ def boxplot_per_constant():
                  'ADC_U_REGULATOR_GAIN', 'ADC_U_REGULATOR_OFFSET',
                  'ADC_I_MON_GAIN', 'ADC_I_MON_OFFSET', 'DAC_CURRENT_GAIN', 'DAC_CURRENT_OFFSET']
     with PdfPages(f'../data/database_boxplots_per_constant.pdf') as pdf:
+        x = np.arange(0, 24, 1)
+        print(x)
         for n in range(10):
             print(f"Plotting {plotnames[n]}...")
             mask = data['used_for_range'] == 'yes'
             fig, ax = plt.subplots()
-            x = np.arange(0, 24, 1)
             y = np.zeros((24, len(data[names[0]][mask])))
             list = []
             for channel in range(24):
@@ -108,13 +134,172 @@ def boxplot_per_constant():
                 list.append(y[channel])
             plt.xlabel('Channels')
             plt.title(plotnames[n])
-            ax.boxplot(list)
+            ax.boxplot(list, positions=x)
+            plt.xticks(x)
             pdf.savefig()
             plt.close(fig)
 
 def constant_precision():
+    pass
 
+def channel_grouping_by_board():
+    #data = pd.read_csv(f'./../data/database.csv')
+    # mask = data['used_for_range'] == 'yes'
+    config_med, config_std = configparser.ConfigParser(), configparser.ConfigParser()
+    config_med.read('../data/database.ini')
+    config_std.read('../data/database_std.ini')
+    plotnames = ['DAC_VOLTAGE_GAIN', 'DAC_VOLTAGE_OFFSET', 'ADC_U_LOAD_GAIN', 'ADC_U_LOAD_OFFSET',
+                 'ADC_U_REGULATOR_GAIN', 'ADC_U_REGULATOR_OFFSET',
+                 'ADC_I_MON_GAIN', 'ADC_I_MON_OFFSET', 'DAC_CURRENT_GAIN', 'DAC_CURRENT_OFFSET']
+    with PdfPages(f'../data/channel_grouping_by_board.pdf') as pdf:
+        for n in range(10):
+            print(f"Plotting {plotnames[n]}...")
+            plt.title(plotnames[n])
+            fig, ax = plt.subplots(2,3)
+            fig.set_figheight(5)
+            fig.set_figwidth(10)
+            fig.suptitle(plotnames[n])
+            medians, stds = np.zeros(24), np.zeros(24)
+            for channel in range(24):
+                medians[channel] = float(config_med[f'{channel}'][plotnames[n]+f'_{channel}'])
+                stds[channel] = float(config_std[f'{channel}'][plotnames[n]+f'_{channel}'])
+            for plot in range(6):
+                x = np.arange(plot*4,plot*4+4,1)
+                xt = x
+                for i in xt:
+                    i = str(i)
+                x = np.arange(0, len(x), 1)
+                y_med = medians[plot*4:plot*4+4]
+                y_std = stds[plot*4:plot*4+4]
+                if plot<3:
+                    ax[0,plot%3].bar(x,2*y_std,bottom=y_med-y_std,alpha=1)
+                    ax[0, plot % 3].hlines(y_med,x-0.5,x+0.5)
+                    ax[0, plot % 3].set_xticks(x)
+                    ax[0, plot % 3].set_xticklabels(xt)
+                else:
+                    ax[1, plot % 3].bar(x, 2 * y_std, bottom=y_med - y_std,alpha=1)
+                    ax[1, plot % 3].hlines(y_med, x - 0.5, x + 0.5)
+                    ax[1, plot % 3].set_xticks(x)
+                    ax[1, plot % 3].set_xticklabels(xt)
+                plt.xticks(x)
+            plt.tight_layout()
+            fig.subplots_adjust(top=0.9)
+            pdf.savefig()
+            plt.close()
+
+def channel_grouping():
+    config_med, config_std = configparser.ConfigParser(), configparser.ConfigParser()
+    config_med.read('../data/database.ini')
+    config_std.read('../data/database_std.ini')
+    plotnames = ['DAC_VOLTAGE_GAIN', 'DAC_VOLTAGE_OFFSET', 'ADC_U_LOAD_GAIN', 'ADC_U_LOAD_OFFSET',
+                 'ADC_U_REGULATOR_GAIN', 'ADC_U_REGULATOR_OFFSET',
+                 'ADC_I_MON_GAIN', 'ADC_I_MON_OFFSET', 'DAC_CURRENT_GAIN', 'DAC_CURRENT_OFFSET']
+    group1 = [0,1,2,3,4,6,7]
+    group2 = [8,9,10,11]
+    group3 = [16,17,18,19]
+    group4 = [20,23]
+    group5 = [21,22]
+    group6 = [5,12,13,14,15]
+    groups = [group1, group2, group3, group4, group5, group6]
+    with PdfPages(f'../data/channel_grouping.pdf') as pdf:
+        for n in range(10):
+            print(f"Plotting {plotnames[n]}...")
+            plt.title(plotnames[n])
+            fig, ax = plt.subplots(2, 3)
+            fig.set_figheight(5)
+            fig.set_figwidth(10)
+            fig.suptitle(plotnames[n])
+            medians, stds = np.zeros(24), np.zeros(24)
+            for channel in range(24):
+                medians[channel] = float(config_med[f'{channel}'][plotnames[n] + f'_{channel}'])
+                stds[channel] = float(config_std[f'{channel}'][plotnames[n] + f'_{channel}'])
+            for plot in range(6):
+                x = np.array(groups[plot])
+                xt = x
+                for i in xt:
+                    i = str(i)
+                x = np.arange(0,len(x),1)
+                #y = np.array
+                y_med = medians[np.array(groups[plot])]
+                y_std = stds[np.array(groups[plot])]
+                if plot < 3:
+                    ax[0, plot % 3].bar(x, 2 * y_std, bottom=y_med - y_std, alpha=1)
+                    ax[0, plot % 3].hlines(y_med, x - 0.5, x + 0.5)
+                    ax[0, plot % 3].set_xticks(x)
+                    ax[0, plot % 3].set_xticklabels(xt)
+                else:
+                    ax[1, plot % 3].bar(x, 2 * y_std, bottom=y_med - y_std, alpha=1)
+                    ax[1, plot % 3].hlines(y_med, x - 0.5, x + 0.5)
+                    ax[1, plot % 3].set_xticks(x)
+                    ax[1, plot % 3].set_xticklabels(xt)
+                #plt.xticks(xt)
+            plt.tight_layout()
+            fig.subplots_adjust(top=0.9)
+            pdf.savefig()
+            plt.close()
+
+def grouping_boxplots():
+    data = pd.read_csv('./../data/database.csv')
+    mask = data['used_for_range'] == 'yes'
+    plotnames = ['DAC_VOLTAGE_GAIN', 'DAC_VOLTAGE_OFFSET', 'ADC_U_LOAD_GAIN', 'ADC_U_LOAD_OFFSET',
+                 'ADC_U_REGULATOR_GAIN', 'ADC_U_REGULATOR_OFFSET',
+                 'ADC_I_MON_GAIN', 'ADC_I_MON_OFFSET', 'DAC_CURRENT_GAIN', 'DAC_CURRENT_OFFSET']
+    group1 = [0, 1, 2, 3, 4, 6, 7]
+    group2 = [8, 9, 10, 11]
+    group3 = [16, 17, 18, 19]
+    group4 = [20, 23]
+    group5 = [21, 22]
+    group6 = [5, 12, 13, 14, 15]
+    groups = [group1, group2, group3, group4, group5, group6]
+    with PdfPages(f'../data/channel_grouping_boxplots.pdf') as pdf:
+        for n in range(10):
+            print(f"Plotting {plotnames[n]}...")
+            fig, ax = plt.subplots(2, 3)
+            fig.set_figheight(5)
+            fig.set_figwidth(12)
+            st = fig.suptitle(plotnames[n])
+            for plot in range(6):
+                x = np.array(groups[plot])
+                xt = []
+                for i in range(len(x)):
+                    #print(channel_names[int(xt[i])])
+                    s1 = str(x[i])
+                    s2 = channel_names[int(x[i])]
+                    if plot == 0: # or plot == 5:
+                        if i%2 == 1:
+                            xt.append(''.join((s1, "\n\n", s2)))
+                        else:
+                            xt.append(''.join((s1, "\n", s2)))
+                    else:
+                        xt.append(''.join((s1, "\n", s2)))
+                y = np.zeros(len(data[names[0]][mask]))
+                list = []
+                for g in groups[plot]:
+                    arg = int(float(g))
+                    y = data[names[4 + arg * 10 + n]][mask]
+                    list.append(y)
+                if plot < 3:
+                    ax[0, plot % 3].boxplot(list)
+                    ax[0, plot % 3].set_xticklabels(xt)
+                    #ax2 = ax[0, plot%3].twiny()
+                    #ax2.set_xticklabels(x)
+                else:
+                    ax[1, plot % 3].boxplot(list)
+                    ax[1, plot % 3].set_xticklabels(xt)
+                    #ax2 = ax[1, plot%3].twiny()
+                    #ax2.set_xticklabels(x)
+                # secret techniques
+                #plt.setp(ax[0,0].get_xticklabels(), rotation=90, horizontalalignment='center')
+                #plt.setp(ax[0, 2].get_xticklabels(), rotation=90, horizontalalignment='center')
+                #plt.setp(ax[1, 2].get_xticklabels(), rotation=90, horizontalalignment='center')
+            plt.tight_layout()
+            fig.subplots_adjust(top=0.9)
+            pdf.savefig()
+            plt.close()
 
 if __name__ == '__main__':
-    boxplot_per_constant()
-    boxplot_per_channel()
+    #boxplot_per_constant()
+    #boxplot_per_channel()
+    #channel_grouping()
+    #channel_grouping_by_board()
+    grouping_boxplots()
