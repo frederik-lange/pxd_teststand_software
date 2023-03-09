@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+import csv
 
 names = ["Unit","Date","validated","used_for_range"]
 for i in range(24):
@@ -19,30 +20,17 @@ for i in range(24):
     names.append(f"DAC_CURRENT_GAIN_{i}")
     names.append(f"DAC_CURRENT_OFFSET_{i}")
 
-channel_names = ['(dhp-io)',
-'(sw-dvdd)',
-'(dcd-dvdd)',
-'(dhp-core)',
-'(dcd-refin)',
-'(source)',
-'(dcd-avdd)',
-'(amplow)',
-'(ccg1)',
-'(ccg2)',
-'(drift)',
-'(ccg3)',
-'(poly)',
-'(HV)',
-'(guard)',
-'(bulk)',
-'(gate-on1)',
-'(gate-on2)',
-'(gate-off)',
-'(gate-on3)',
-'(clear-on)',
-'(sw-refin)',
-'(sw-sub)',
-'(clear-off)']
+vars = ['DAC_VOLTAGE_GAIN', 'DAC_VOLTAGE_OFFSET', 'ADC_U_LOAD_GAIN', 'ADC_U_LOAD_OFFSET', 'ADC_U_REGULATOR_GAIN', 'ADC_U_REGULATOR_OFFSET',
+                 'ADC_I_MON_GAIN', 'ADC_I_MON_OFFSET', 'DAC_CURRENT_GAIN', 'DAC_CURRENT_OFFSET']
+
+channel_names = ['(dhp-io)','(sw-dvdd)','(dcd-dvdd)','(dhp-core)','(dcd-refin)','(source)','(dcd-avdd)','(amplow)','(ccg1)','(ccg2)','(drift)','(ccg3)','(poly)',
+                 '(HV)','(guard)','(bulk)','(gate-on1)','(gate-on2)','(gate-off)','(gate-on3)','(clear-on)','(sw-refin)','(sw-sub)','(clear-off)']
+group1 = [0, 1, 2, 3, 4, 6, 7]
+group2 = [8, 9, 10, 11]
+group3 = [16, 17, 18, 19]
+group4 = [20, 23]
+group5 = [21, 22]
+group6 = [5, 12, 13, 14, 15]
 
 def check_all():
     configPath = configparser.ConfigParser()
@@ -194,12 +182,6 @@ def channel_grouping():
     plotnames = ['DAC_VOLTAGE_GAIN', 'DAC_VOLTAGE_OFFSET', 'ADC_U_LOAD_GAIN', 'ADC_U_LOAD_OFFSET',
                  'ADC_U_REGULATOR_GAIN', 'ADC_U_REGULATOR_OFFSET',
                  'ADC_I_MON_GAIN', 'ADC_I_MON_OFFSET', 'DAC_CURRENT_GAIN', 'DAC_CURRENT_OFFSET']
-    group1 = [0,1,2,3,4,6,7]
-    group2 = [8,9,10,11]
-    group3 = [16,17,18,19]
-    group4 = [20,23]
-    group5 = [21,22]
-    group6 = [5,12,13,14,15]
     groups = [group1, group2, group3, group4, group5, group6]
     with PdfPages(f'../data/channel_grouping.pdf') as pdf:
         for n in range(10):
@@ -244,12 +226,6 @@ def grouping_boxplots():
     plotnames = ['DAC_VOLTAGE_GAIN', 'DAC_VOLTAGE_OFFSET', 'ADC_U_LOAD_GAIN', 'ADC_U_LOAD_OFFSET',
                  'ADC_U_REGULATOR_GAIN', 'ADC_U_REGULATOR_OFFSET',
                  'ADC_I_MON_GAIN', 'ADC_I_MON_OFFSET', 'DAC_CURRENT_GAIN', 'DAC_CURRENT_OFFSET']
-    group1 = [0, 1, 2, 3, 4, 6, 7]
-    group2 = [8, 9, 10, 11]
-    group3 = [16, 17, 18, 19]
-    group4 = [20, 23]
-    group5 = [21, 22]
-    group6 = [5, 12, 13, 14, 15]
     groups = [group1, group2, group3, group4, group5, group6]
     with PdfPages(f'../data/channel_grouping_boxplots.pdf') as pdf:
         for n in range(10):
@@ -297,9 +273,129 @@ def grouping_boxplots():
             pdf.savefig()
             plt.close()
 
+def calc_median(config,group,name,digital,writer):
+    medians = []
+    #print(group)
+    for const in range(10):
+        #print(vars[const])
+        values = np.zeros(len(group))
+        for x in range(len(values)):
+            values[x] = config[f'{group[x]}'][f'{vars[const]}_{group[x]}']
+            #print(group[x],values[x])
+        if digital == True:
+            if const == 6 or const == 7:
+                #medians.append(np.median(values[0,2:]))
+                values = np.delete(values,0)
+            if const == 8 or const == 9:
+                values = np.delete(values,(0,6))
+                #medians.append(np.median(values[0,2:-1]))
+        medians.append(np.median(values))
+        #print(f'{vars[const]}:\nmedian: {med}')
+    medians.insert(0, name)
+    medians.insert(1, 'median')
+    writer.writerow(medians)
+
+def calc_std(config,group,name,digital,writer):
+    stds = []
+    for const in range(10):
+        values = np.zeros(len(group))
+        for x in range(len(values)):
+            values[x] = config[f'{group[x]}'][f'{vars[const]}_{group[x]}']
+        if digital == True:
+            if const == 6 or const == 7:
+                #medians.append(np.median(values[0,2:]))
+                values = np.delete(values,0)
+            if const == 8 or const == 9:
+                values = np.delete(values,(0,6))
+                #medians.append(np.median(values[0,2:-1]))
+        stds.append(np.median(values))
+        #print(f'{vars[const]}:\nstd: {med}')
+    stds.insert(0, name)
+    stds.insert(1, 'std')
+    writer.writerow(stds)
+
+def calculate_valid_constants():
+    # calculate median and std via arithmetic median of database.ini ranges
+    config_median, config_std = configparser.ConfigParser(), configparser.ConfigParser()
+    config_median.read('./../data/database.ini')
+    config_std.read('./../data/database_std.ini')
+    header_names = vars.copy()
+    header_names.insert(0,'Group')
+    header_names.insert(1,'values')
+    with open(f'../data/valid_ranges.csv', 'w+', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(header_names)
+        #writer = csv.DictWriter(csvfile, fieldnames=header_names)
+        #writer.writeheader()
+        calc_median(config_median,group1,'digital',True,writer)
+        calc_std(config_std,group1,'digital',True,writer)
+        calc_median(config_median,group2,'ccg',False,writer)
+        calc_std(config_std,group2,'ccg',False,writer)
+        calc_median(config_median, group3, 'gate', False, writer)
+        calc_std(config_std, group3, 'gate', False, writer)
+        calc_median(config_median, group4, 'clear', False, writer)
+        calc_std(config_std, group4, 'clear', False, writer)
+        calc_median(config_median, group5, 'sw', False, writer)
+        calc_std(config_std, group5, 'sw', False, writer)
+        calculate_range_total(writer)
+
+def calculate_range_total(writer):
+    writer.writerow(['Calculated from database'])
+    # calculate median and std directly from database.csv
+    data = pd.read_csv('../data/database.csv')
+    valid = data['used_for_range'] == 'yes'
+    # special treatment for group 1:
+    stds = np.zeros(10)
+    medians = np.zeros(10)
+    help_group = group1.copy()
+    for const in range(10):
+        values = np.empty(1)
+        for channel in help_group:
+            add = data[names[4 + channel * 10 + const]][valid]
+            #print(names[4 + channel * 10 + const])
+            # print(add)
+            values = np.concatenate((values, add), axis=None)
+        # print(values.shape)
+        medians[const] = np.median(values[1:])
+        stds[const] = np.std(values[1:])
+        if const == 5:
+            help_group = np.delete(help_group,1)
+        if const == 7:
+            help_group = np.delete(help_group,5)
+    #print(medians)
+    list = ['digital','mean'] + medians.tolist()
+    writer.writerow(list)
+    list = ['digital','std'] + stds.tolist()
+    writer.writerow(list)
+
+    # group 2 to 5:
+    index = 0
+    for group in [group2, group3, group4, group5]:
+        stds = np.zeros(10)
+        medians = np.zeros(10)
+        for const in range(10):
+            values = np.empty(1)
+            for channel in group:
+                add = data[names[4 + channel * 10 + const]][valid]
+                #print(names[4+channel*10+const])
+                #print(add)
+                values = np.concatenate((values,add),axis=None)
+            #print(values.shape)
+            medians[const] = np.median(values[1:])
+            stds[const] = np.std(values[1:])
+        head = ['ccg','gate','clear','sw']
+        list = [head[index],'median'] + medians.tolist()
+        writer.writerow(list)
+        list = [head[index],'std'] + stds.tolist()
+        writer.writerow(list)
+        index += 1
+        print(medians)
+
 if __name__ == '__main__':
     #boxplot_per_constant()
     #boxplot_per_channel()
     #channel_grouping()
     #channel_grouping_by_board()
-    grouping_boxplots()
+    #grouping_boxplots()
+    calculate_valid_constants()
+    #calculate_range_total()

@@ -124,6 +124,7 @@ def update_range():
     #print(medians)
 
     # special case for hv (Channel 13): consider only values with muA monitoring
+    # not needed when considering used_for_range
     mask = data['ADC_I_MON_GAIN_13']>-1500
     medians[13,6] = np.mean(data['ADC_I_MON_GAIN_13'][mask])
     sigmas[13,6] = np.std(data['ADC_I_MON_GAIN_13'][mask])
