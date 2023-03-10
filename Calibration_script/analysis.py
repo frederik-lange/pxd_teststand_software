@@ -33,6 +33,7 @@ group5 = [21, 22]
 group6 = [5, 12, 13, 14, 15]
 
 def check_all():
+    # compare all calibration constants to the valid range
     configPath = configparser.ConfigParser()
     config = configparser.ConfigParser()
     config_ini = configparser.ConfigParser()
@@ -74,6 +75,7 @@ def check_all():
     print(f'{successes} out of {scans} data sets were successful!')
 
 def boxplot_per_channel():
+    # Plot boxplots for 10 constants per Channel
     data = pd.read_csv(f'./../data/database.csv')
     plotnames = ['DAC_VOLTAGE_GAIN', 'DAC_VOLTAGE_OFFSET', 'ADC_U_LOAD_GAIN', 'ADC_U_LOAD_OFFSET',
                  'ADC_U_REGULATOR_GAIN', 'ADC_U_REGULATOR_OFFSET',
@@ -104,6 +106,7 @@ def boxplot_per_channel():
             plt.close(fig)
 
 def boxplot_per_constant():
+    # Plot boxplots for 24 channels per constant
     data = pd.read_csv(f'./../data/database.csv')
     plotnames = ['DAC_VOLTAGE_GAIN', 'DAC_VOLTAGE_OFFSET', 'ADC_U_LOAD_GAIN', 'ADC_U_LOAD_OFFSET',
                  'ADC_U_REGULATOR_GAIN', 'ADC_U_REGULATOR_OFFSET',
@@ -131,10 +134,9 @@ def constant_precision():
     pass
 
 def channel_grouping_by_board():
-    #data = pd.read_csv(f'./../data/database.csv')
-    # mask = data['used_for_range'] == 'yes'
-    config_med, config_std = configparser.ConfigParser(), configparser.ConfigParser()
-    config_med.read('../data/database.ini')
+    # group channels the way they are placed on the boards
+    config_mean, config_std = configparser.ConfigParser(), configparser.ConfigParser()
+    config_mean.read('../data/database.ini')
     config_std.read('../data/database_std.ini')
     plotnames = ['DAC_VOLTAGE_GAIN', 'DAC_VOLTAGE_OFFSET', 'ADC_U_LOAD_GAIN', 'ADC_U_LOAD_OFFSET',
                  'ADC_U_REGULATOR_GAIN', 'ADC_U_REGULATOR_OFFSET',
@@ -147,9 +149,9 @@ def channel_grouping_by_board():
             fig.set_figheight(5)
             fig.set_figwidth(10)
             fig.suptitle(plotnames[n])
-            medians, stds = np.zeros(24), np.zeros(24)
+            means, stds = np.zeros(24), np.zeros(24)
             for channel in range(24):
-                medians[channel] = float(config_med[f'{channel}'][plotnames[n]+f'_{channel}'])
+                means[channel] = float(config_mean[f'{channel}'][plotnames[n]+f'_{channel}'])
                 stds[channel] = float(config_std[f'{channel}'][plotnames[n]+f'_{channel}'])
             for plot in range(6):
                 x = np.arange(plot*4,plot*4+4,1)
@@ -157,16 +159,16 @@ def channel_grouping_by_board():
                 for i in xt:
                     i = str(i)
                 x = np.arange(0, len(x), 1)
-                y_med = medians[plot*4:plot*4+4]
+                y_mean = means[plot*4:plot*4+4]
                 y_std = stds[plot*4:plot*4+4]
                 if plot<3:
-                    ax[0,plot%3].bar(x,2*y_std,bottom=y_med-y_std,alpha=1)
-                    ax[0, plot % 3].hlines(y_med,x-0.5,x+0.5)
+                    ax[0,plot%3].bar(x,2*y_std,bottom=y_mean-y_std,alpha=1)
+                    ax[0, plot % 3].hlines(y_mean,x-0.5,x+0.5)
                     ax[0, plot % 3].set_xticks(x)
                     ax[0, plot % 3].set_xticklabels(xt)
                 else:
-                    ax[1, plot % 3].bar(x, 2 * y_std, bottom=y_med - y_std,alpha=1)
-                    ax[1, plot % 3].hlines(y_med, x - 0.5, x + 0.5)
+                    ax[1, plot % 3].bar(x, 2 * y_std, bottom=y_mean - y_std,alpha=1)
+                    ax[1, plot % 3].hlines(y_mean, x - 0.5, x + 0.5)
                     ax[1, plot % 3].set_xticks(x)
                     ax[1, plot % 3].set_xticklabels(xt)
                 plt.xticks(x)
@@ -176,8 +178,9 @@ def channel_grouping_by_board():
             plt.close()
 
 def channel_grouping():
-    config_med, config_std = configparser.ConfigParser(), configparser.ConfigParser()
-    config_med.read('../data/database.ini')
+    # Plot constants as bars for channels sorted by manually evaluated groups
+    config_mean, config_std = configparser.ConfigParser(), configparser.ConfigParser()
+    config_mean.read('../data/database.ini')
     config_std.read('../data/database_std.ini')
     plotnames = ['DAC_VOLTAGE_GAIN', 'DAC_VOLTAGE_OFFSET', 'ADC_U_LOAD_GAIN', 'ADC_U_LOAD_OFFSET',
                  'ADC_U_REGULATOR_GAIN', 'ADC_U_REGULATOR_OFFSET',
@@ -191,9 +194,9 @@ def channel_grouping():
             fig.set_figheight(5)
             fig.set_figwidth(10)
             fig.suptitle(plotnames[n])
-            medians, stds = np.zeros(24), np.zeros(24)
+            means, stds = np.zeros(24), np.zeros(24)
             for channel in range(24):
-                medians[channel] = float(config_med[f'{channel}'][plotnames[n] + f'_{channel}'])
+                means[channel] = float(config_mean[f'{channel}'][plotnames[n] + f'_{channel}'])
                 stds[channel] = float(config_std[f'{channel}'][plotnames[n] + f'_{channel}'])
             for plot in range(6):
                 x = np.array(groups[plot])
@@ -202,16 +205,16 @@ def channel_grouping():
                     i = str(i)
                 x = np.arange(0,len(x),1)
                 #y = np.array
-                y_med = medians[np.array(groups[plot])]
+                y_mean = means[np.array(groups[plot])]
                 y_std = stds[np.array(groups[plot])]
                 if plot < 3:
-                    ax[0, plot % 3].bar(x, 2 * y_std, bottom=y_med - y_std, alpha=1)
-                    ax[0, plot % 3].hlines(y_med, x - 0.5, x + 0.5)
+                    ax[0, plot % 3].bar(x, 2 * y_std, bottom=y_mean - y_std, alpha=1)
+                    ax[0, plot % 3].hlines(y_mean, x - 0.5, x + 0.5)
                     ax[0, plot % 3].set_xticks(x)
                     ax[0, plot % 3].set_xticklabels(xt)
                 else:
-                    ax[1, plot % 3].bar(x, 2 * y_std, bottom=y_med - y_std, alpha=1)
-                    ax[1, plot % 3].hlines(y_med, x - 0.5, x + 0.5)
+                    ax[1, plot % 3].bar(x, 2 * y_std, bottom=y_mean - y_std, alpha=1)
+                    ax[1, plot % 3].hlines(y_mean, x - 0.5, x + 0.5)
                     ax[1, plot % 3].set_xticks(x)
                     ax[1, plot % 3].set_xticklabels(xt)
                 #plt.xticks(xt)
@@ -221,6 +224,7 @@ def channel_grouping():
             plt.close()
 
 def grouping_boxplots():
+    # box plots for all channels grouped
     data = pd.read_csv('./../data/database.csv')
     mask = data['used_for_range'] == 'yes'
     plotnames = ['DAC_VOLTAGE_GAIN', 'DAC_VOLTAGE_OFFSET', 'ADC_U_LOAD_GAIN', 'ADC_U_LOAD_OFFSET',
@@ -273,8 +277,8 @@ def grouping_boxplots():
             pdf.savefig()
             plt.close()
 
-def calc_median(config,group,name,digital,writer):
-    medians = []
+def calc_mean(config,group,name,digital,writer):
+    means = []
     #print(group)
     for const in range(10):
         #print(vars[const])
@@ -284,16 +288,18 @@ def calc_median(config,group,name,digital,writer):
             #print(group[x],values[x])
         if digital == True:
             if const == 6 or const == 7:
-                #medians.append(np.median(values[0,2:]))
-                values = np.delete(values,0)
+                #means.append(np.mean(values[0,2:]))
+                values = np.delete(values,1)
+                print(values)
             if const == 8 or const == 9:
-                values = np.delete(values,(0,6))
-                #medians.append(np.median(values[0,2:-1]))
-        medians.append(np.median(values))
-        #print(f'{vars[const]}:\nmedian: {med}')
-    medians.insert(0, name)
-    medians.insert(1, 'median')
-    writer.writerow(medians)
+                values = np.delete(values,(1,6))
+                print(values)
+                #means.append(np.mean(values[0,2:-1]))
+        means.append(np.mean(values))
+        #print(f'{vars[const]}:\nmean: {mean}')
+    means.insert(0, name)
+    means.insert(1, 'mean')
+    writer.writerow(means)
 
 def calc_std(config,group,name,digital,writer):
     stds = []
@@ -303,21 +309,21 @@ def calc_std(config,group,name,digital,writer):
             values[x] = config[f'{group[x]}'][f'{vars[const]}_{group[x]}']
         if digital == True:
             if const == 6 or const == 7:
-                #medians.append(np.median(values[0,2:]))
-                values = np.delete(values,0)
+                #means.append(np.mean(values[0,2:]))
+                values = np.delete(values,1)
             if const == 8 or const == 9:
-                values = np.delete(values,(0,6))
-                #medians.append(np.median(values[0,2:-1]))
-        stds.append(np.median(values))
-        #print(f'{vars[const]}:\nstd: {med}')
+                values = np.delete(values,(1,6))
+                #means.append(np.mean(values[0,2:-1]))
+        stds.append(np.mean(values))
+        #print(f'{vars[const]}:\nstd: {mean}')
     stds.insert(0, name)
     stds.insert(1, 'std')
     writer.writerow(stds)
 
 def calculate_valid_constants():
-    # calculate median and std via arithmetic median of database.ini ranges
-    config_median, config_std = configparser.ConfigParser(), configparser.ConfigParser()
-    config_median.read('./../data/database.ini')
+    # calculate mean and std via arithmetic mean of database.ini ranges
+    config_mean, config_std = configparser.ConfigParser(), configparser.ConfigParser()
+    config_mean.read('./../data/database.ini')
     config_std.read('./../data/database_std.ini')
     header_names = vars.copy()
     header_names.insert(0,'Group')
@@ -327,26 +333,27 @@ def calculate_valid_constants():
         writer.writerow(header_names)
         #writer = csv.DictWriter(csvfile, fieldnames=header_names)
         #writer.writeheader()
-        calc_median(config_median,group1,'digital',True,writer)
+        calc_mean(config_mean,group1,'digital',True,writer)
         calc_std(config_std,group1,'digital',True,writer)
-        calc_median(config_median,group2,'ccg',False,writer)
+        calc_mean(config_mean,group2,'ccg',False,writer)
         calc_std(config_std,group2,'ccg',False,writer)
-        calc_median(config_median, group3, 'gate', False, writer)
+        calc_mean(config_mean, group3, 'gate', False, writer)
         calc_std(config_std, group3, 'gate', False, writer)
-        calc_median(config_median, group4, 'clear', False, writer)
+        calc_mean(config_mean, group4, 'clear', False, writer)
         calc_std(config_std, group4, 'clear', False, writer)
-        calc_median(config_median, group5, 'sw', False, writer)
+        calc_mean(config_mean, group5, 'sw', False, writer)
         calc_std(config_std, group5, 'sw', False, writer)
         calculate_range_total(writer)
 
 def calculate_range_total(writer):
+    # calculate constants directly from database
     writer.writerow(['Calculated from database'])
-    # calculate median and std directly from database.csv
+    # calculate mean and std directly from database.csv
     data = pd.read_csv('../data/database.csv')
     valid = data['used_for_range'] == 'yes'
     # special treatment for group 1:
     stds = np.zeros(10)
-    medians = np.zeros(10)
+    means = np.zeros(10)
     help_group = group1.copy()
     for const in range(10):
         values = np.empty(1)
@@ -356,14 +363,14 @@ def calculate_range_total(writer):
             # print(add)
             values = np.concatenate((values, add), axis=None)
         # print(values.shape)
-        medians[const] = np.median(values[1:])
+        means[const] = np.mean(values[1:])
         stds[const] = np.std(values[1:])
         if const == 5:
             help_group = np.delete(help_group,1)
         if const == 7:
             help_group = np.delete(help_group,5)
-    #print(medians)
-    list = ['digital','mean'] + medians.tolist()
+    #print(means)
+    list = ['digital','mean'] + means.tolist()
     writer.writerow(list)
     list = ['digital','std'] + stds.tolist()
     writer.writerow(list)
@@ -372,7 +379,7 @@ def calculate_range_total(writer):
     index = 0
     for group in [group2, group3, group4, group5]:
         stds = np.zeros(10)
-        medians = np.zeros(10)
+        means = np.zeros(10)
         for const in range(10):
             values = np.empty(1)
             for channel in group:
@@ -381,15 +388,59 @@ def calculate_range_total(writer):
                 #print(add)
                 values = np.concatenate((values,add),axis=None)
             #print(values.shape)
-            medians[const] = np.median(values[1:])
+            means[const] = np.mean(values[1:])
             stds[const] = np.std(values[1:])
         head = ['ccg','gate','clear','sw']
-        list = [head[index],'median'] + medians.tolist()
+        list = [head[index],'mean'] + means.tolist()
         writer.writerow(list)
         list = [head[index],'std'] + stds.tolist()
         writer.writerow(list)
         index += 1
-        print(medians)
+        print(means)
+
+def constants_variance_grouped():
+    data = pd.read_csv('../data/valid_ranges.csv')
+    with PdfPages(f'../data/constants_variance_grouped.pdf') as pdf:
+        x,y = np.arange(0,5,1), np.zeros(5)
+        group_names = data['Group'][11::2]
+        for const in range(10):
+            values = data[vars[const]]
+            plt.figure()
+            _, ax = plt.subplots()
+            for group in range(5):
+                y[group] = np.abs(values[12+group*2]/values[11+group*2])
+            plt.bar(x,y)
+            plt.title(vars[const])
+            plt.ylabel('Constants variance')
+            ax.set_xticks(x)
+            ax.set_xticklabels(group_names)
+            pdf.savefig()
+            plt.close()
+            print(vars[const])
+            print(y)
+
+def constants_variance_single():
+    config_vals = configparser.ConfigParser()
+    config_vals.read(f'../data/database.ini')
+    config_errs = configparser.ConfigParser()
+    config_errs.read(f'../data/database_std.ini')
+    plotnames=['DAC_VOLTAGE_GAIN','DAC_VOLTAGE_OFFSET','ADC_U_LOAD_GAIN','ADC_U_LOAD_OFFSET','ADC_U_REGULATOR_GAIN','ADC_U_REGULATOR_OFFSET',
+           'ADC_I_MON_GAIN','ADC_I_MON_OFFSET','DAC_CURRENT_GAIN','DAC_CURRENT_OFFSET']
+    with PdfPages(f'../data/Constants_variance_single.pdf') as pdf:
+        for n in range(10):
+            x = np.arange(0,24,1)
+            y = np.zeros(24)
+            for channel in range(24):
+                med, std = float(config_vals[f'{channel}'][names[4 + channel * 10 + n]]), float(config_errs[f'{channel}'][names[4 + channel * 10 + n]])
+                varK = np.abs(std/med)
+                y[channel] = varK
+            plt.figure()
+            plt.grid()
+            plt.xlabel('Channels'),plt.title(plotnames[n])
+            plt.ylabel('Constants Variance')
+            plt.xticks(np.arange(0,24,1))
+            plt.bar(x,y)
+            pdf.savefig()
 
 if __name__ == '__main__':
     #boxplot_per_constant()
@@ -397,5 +448,5 @@ if __name__ == '__main__':
     #channel_grouping()
     #channel_grouping_by_board()
     #grouping_boxplots()
-    calculate_valid_constants()
-    #calculate_range_total()
+    #calculate_valid_constants()
+    constants_variance()
