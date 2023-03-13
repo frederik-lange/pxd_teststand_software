@@ -38,6 +38,10 @@ def scatter_grad(x,y,xlabel,ylabel,title,cutoff):
     plt.axhline(-cutoff, color='red')
     plt.legend()
     #plt.show()
+    title = title.replace(" ","_")
+    title = title.replace("{","")
+    title = title.replace("}", "")
+    title = title.replace("$", "")
     plt.savefig(os.path.join('../data/validation',title))
     plt.close()
 
@@ -48,10 +52,14 @@ def scatter_slope(x,y,xlabel,ylabel,title,mean,std):
     plt.title(title)
     plt.scatter(x,y)
     upper, lower = mean + 2 * std, mean - 2 * std
-    plt.axhline(upper,label='threshhold',color='red')
+    plt.axhline(upper,label='threshold',color='red')
     plt.axhline(lower,color='red')
     plt.legend()
     #plt.show()
+    title = title.replace(" ","_")
+    title = title.replace("{","")
+    title = title.replace("}", "")
+    title = title.replace("$", "")
     plt.savefig(os.path.join('../data/validation',title))
     plt.close()
 
@@ -63,6 +71,10 @@ def scatter_cut(x,y,x_cut,y_cut,xlabel,ylabel,title):
     plt.scatter(x, y, color='black')
     plt.scatter(x_cut,y_cut,color='grey')
     #plt.show()
+    title = title.replace(" ","_")
+    title = title.replace("{","")
+    title = title.replace("}", "")
+    title = title.replace("$", "")
     plt.savefig(os.path.join('../data/validation',title))
     plt.close()
 
@@ -253,7 +265,7 @@ if __name__ == '__main__':
     # Getting path from .ini file
     config.read("path.ini")
 
-    for channel in [5]: #[0,1,5,10,21]:
+    for channel in [5,21]: #[0,1,5,10,21]:
         print(channel)
         path_UvsU = os.path.join(path,f'Channel_{channel}_U_vs_U.dat')
         columns_UvsU = ["$U_{DAC}$ [mV]", "$U_{out}$ [mV]", "$U_{regulator}$ [mV]", "$U_{load}$ [mV]", "unknown 5", "unknown 6"]
@@ -273,6 +285,9 @@ if __name__ == '__main__':
         x_3, y_3, l_3 = main.get_and_prepare(data_IvsI, '$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
         x_4, y_4, l_4 = main.get_and_prepare(data_IlimitvsI, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]')
 
+        scatter_cut(x_0,y_0,None,None,"$U_{DAC}$","$U_{out}$",f"Channel {channel} DAC Voltage")
+        scatter_cut(x_3,y_3,None,None,"$I_{SMU}$","$I_{outMon}$",f"Channel {channel} ADC I Monitoring")
+
         x_0, y_0, x_cut_0, y_cut_0 = cut_outliers(x_0, y_0, channel, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]', "U_{DAC}")
         x_1, y_1, x_cut_1, y_cut_1 = cut_outliers(x_1, y_1, channel, '$U_{out}$ [mV]', '$U_{regulator}$ [mV]', "U_{Regulator}")
         x_2, y_2, x_cut_2, y_cut_2 = cut_outliers(x_2, y_2, channel, '$U_{out}$ [mV]', '$U_{load}$ [mV]', "U_{Load}")
@@ -291,7 +306,7 @@ if __name__ == '__main__':
             print(y_3[i],y_fit[i])
 
         root_chisquare = np.sum((y_3 - y_fit)**2/y_fit)
-        print(f"CHI SQUARE: {root_chisquare}")
+        print(f"ROOT chi square: {root_chisquare}")
 
         """
         #x_0, y_0, x_cut_0_gc, y_cut_0_gc = graph_Cleaner(x_0,y_0)
