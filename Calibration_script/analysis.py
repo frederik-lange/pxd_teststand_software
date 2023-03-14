@@ -351,6 +351,7 @@ def calculate_range_total(writer):
     # calculate mean and std directly from database.csv
     data = pd.read_csv('../data/database.csv')
     valid = data['used_for_range'] == 'yes'
+
     # special treatment for group 1:
     stds = np.zeros(10)
     means = np.zeros(10)
@@ -374,6 +375,8 @@ def calculate_range_total(writer):
     writer.writerow(list)
     list = ['digital','std'] + stds.tolist()
     writer.writerow(list)
+    ini_list = list[2:].copy()
+    print(ini_list)
 
     # group 2 to 5:
     index = 0
@@ -442,6 +445,18 @@ def constants_variance_single():
             plt.bar(x,y)
             pdf.savefig()
 
+def final_ranges_to_ini():
+    config = configparser.ConfigParser()
+    data = pd.read_csv('../data/valid_ranges.csv')
+    for gr in range(5):
+        print(data["Group"][11+2*gr])
+        #print(data[vars[0]][11])
+        config[data['Group'][11+2*gr]] = {
+            vars[n] : data[vars[n]][11+2*gr] for n in range(10)
+            }
+    with open(f'../data/final_ranges.ini', 'w') as configfile:
+        config.write(configfile)
+
 if __name__ == '__main__':
     #boxplot_per_constant()
     #boxplot_per_channel()
@@ -449,4 +464,5 @@ if __name__ == '__main__':
     #channel_grouping_by_board()
     #grouping_boxplots()
     #calculate_valid_constants()
-    constants_variance()
+    final_ranges_to_ini()
+    #constants_variance()
