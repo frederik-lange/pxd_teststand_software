@@ -486,6 +486,46 @@ def final_ranges_to_ini():
     with open(f'../data/final_ranges.ini', 'w') as configfile:
         config.write(configfile)
 
+def final_ranges_relative():
+    config = configparser.ConfigParser()
+    config.read('../data/final_ranges.ini')
+    d = vars.copy()
+    for l in range(len(d)):
+        d.insert(2*l+1,f'{vars[l]}_DIFF')
+    df = pd.DataFrame(data=d)
+    #print(df)
+    groups = ['digital','ccg','gate','sw','clear','5','12','13','14']
+    for name in groups:
+        list = []
+        for item in d[:]:
+            list.append(config[name][item])
+        df[name] = list
+    df['1'] = df['digital']
+    df['7'] = df['digital']
+    #df.rename(columns={'digital': '1', 'digital': '7'})
+    df['1'][12] = config['1']['ADC_I_MON_GAIN']
+    df['1'][13] = config['1']['ADC_I_MON_GAIN_DIFF']
+    df['1'][14] = config['1']['ADC_I_MON_OFFSET']
+    df['1'][15] = config['1']['ADC_I_MON_OFFSET_DIFF']
+    df['1'][16] = config['1']['DAC_CURRENT_GAIN']
+    df['1'][17] = config['1']['DAC_CURRENT_GAIN_DIFF']
+    df['1'][18] = config['1']['DAC_CURRENT_OFFSET']
+    df['1'][19] = config['1']['DAC_CURRENT_OFFSET_DIFF']
+    df['7'][16] = config['7']['DAC_CURRENT_GAIN']
+    df['7'][17] = config['7']['DAC_CURRENT_GAIN_DIFF']
+    df['7'][18] = config['7']['DAC_CURRENT_OFFSET']
+    df['7'][19] = config['7']['DAC_CURRENT_OFFSET_DIFF']
+    #df = df.T
+    print(df)
+
+    # get relative differences:
+    groups.append('1')
+    groups.append('7')
+    for name in groups:
+        for n in range(5):
+            df[name][1+ n*4] = np.abs(float(df[name][1+n*4])/float(df[name][n*4]))
+    df.to_csv('../data/final_ranges_relative.csv')
+
 if __name__ == '__main__':
     #boxplot_per_constant()
     #boxplot_per_channel()
@@ -495,7 +535,8 @@ if __name__ == '__main__':
     #calculate_valid_constants()
     #final_ranges_to_ini()
     #constants_variance()
-    data = pd.read_csv(f'./../data/database.csv')
-    valid = data['used_for_range'] == 'yes'
-    print(data['Unit'][valid])
-    print(data['DAC_CURRENT_OFFSET_13'][valid])
+    final_ranges_relative()
+    #data = pd.read_csv(f'./../data/database.csv')
+    #valid = data['used_for_range'] == 'yes'
+    #print(data['Unit'][valid])
+    #print(data['DAC_CURRENT_OFFSET_13'][valid])
