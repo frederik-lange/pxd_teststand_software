@@ -446,14 +446,43 @@ def constants_variance_single():
             pdf.savefig()
 
 def final_ranges_to_ini():
+    # for the groups:
     config = configparser.ConfigParser()
     data = pd.read_csv('../data/valid_ranges.csv')
+    config_dict = {}
     for gr in range(5):
         print(data["Group"][11+2*gr])
-        #print(data[vars[0]][11])
-        config[data['Group'][11+2*gr]] = {
-            vars[n] : data[vars[n]][11+2*gr] for n in range(10)
-            }
+        for n in range(10):
+            config_dict[vars[n]] = data[vars[n]][11+2*gr]
+            config_dict[f'{vars[n]}_diff'] = data[vars[n]][12+2*gr]
+        config[data["Group"][11+2*gr]] = config_dict
+
+    #database = pd.read_csv('../data/database.csv')
+    config_channel = configparser.ConfigParser()
+    config_channel.read('../data/database.ini')
+    config_channel_std = configparser.ConfigParser()
+    config_channel_std.read('../data/database_std.ini')
+
+    # for channel 1 and 7 in the digital group
+    config_dict = {}
+    for name in ['DAC_CURRENT_GAIN','DAC_CURRENT_OFFSET','ADC_I_MON_GAIN','ADC_I_MON_OFFSET']:
+        config_dict[name] = config_channel['1'][f'{name}_1']
+        config_dict[f'{name}_diff'] = config_channel_std['1'][f'{name}_1']
+    config['1'] = config_dict
+    config_dict = {}
+    for name in ['DAC_CURRENT_GAIN','DAC_CURRENT_OFFSET']:
+        config_dict[name] = config_channel['7'][f'{name}_7']
+        config_dict[f'{name}_diff'] = config_channel_std['7'][f'{name}_7']
+    config['7'] = config_dict
+
+    # for the non grouped channels:
+    for channel in [5,12,13,14,15]:
+        config_dict = {}
+        for name in vars:
+            config_dict[name] = config_channel[f'{channel}'][f'{name}_{channel}']
+            config_dict[f'{name}_diff'] = config_channel_std[f'{channel}'][f'{name}_{channel}']
+        config[channel] = config_dict
+
     with open(f'../data/final_ranges.ini', 'w') as configfile:
         config.write(configfile)
 
@@ -464,5 +493,9 @@ if __name__ == '__main__':
     #channel_grouping_by_board()
     #grouping_boxplots()
     #calculate_valid_constants()
-    final_ranges_to_ini()
+    #final_ranges_to_ini()
     #constants_variance()
+    data = pd.read_csv(f'./../data/database.csv')
+    valid = data['used_for_range'] == 'yes'
+    print(data['Unit'][valid])
+    print(data['DAC_CURRENT_OFFSET_13'][valid])

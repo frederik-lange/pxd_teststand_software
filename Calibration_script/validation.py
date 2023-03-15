@@ -101,8 +101,8 @@ def cut_outliers(x, y, channel, xlabel, ylabel, title):
     #print(np.gradient(y))
     #print(y[cut])
     upper,lower = tolerance,-tolerance
-    scatter_grad(x,np.gradient(y),xlabel,f"Gradients of {ylabel}",f"Channel_{channel}_${title}$_Plot_of_gradients",tolerance)
-    scatter_cut(x[~cut],y[~cut],x[cut],y[cut],xlabel,f"Gradients of {ylabel}",f"Channel_{channel}_${title}$_Plot_cut_by_gradient_criteria")
+    scatter_grad(x,np.gradient(y),xlabel,f"Gradients of {ylabel}",f"Channel {channel} ${title}$ Plot of gradients",tolerance)
+    scatter_cut(x[~cut],y[~cut],x[cut],y[cut],xlabel,f"Gradients of {ylabel}",f"Channel {channel} ${title}$ Plot cut by gradient criteria")
 
     if x[~cut].size == 0:
         return x[~cut], y[~cut], x[cut], y[cut]
@@ -112,8 +112,8 @@ def cut_outliers(x, y, channel, xlabel, ylabel, title):
         #print(f'For slopes: mean: {mean}, standard deviation: {std}')
         #cut to  2 sigma
         cut[np.logical_or((slopes >= 2 * std + mean), (slopes <= mean - 2 * std))] = True
-        scatter_slope(x,slopes,xlabel,f"Slopes of {ylabel}",f"Channel_{channel}_${title}$_Plot_of_slopes",mean,std)
-        scatter_cut(x[~cut],y[~cut],x[cut],y[cut],xlabel,f"Slopes of {ylabel}",f"Channel_{channel}_${title}$_Plot_cut_by_standard_deviation_of_slopes")
+        scatter_slope(x,slopes,xlabel,f"Slopes of {ylabel}",f"Channel {channel} ${title}$ Plot of slopes",mean,std)
+        scatter_cut(x[~cut],y[~cut],x[cut],y[cut],xlabel,f"Slopes of {ylabel}",f"Channel {channel} ${title}$ Plot cut by standard deviation of slopes")
 
     return x[~cut], y[~cut],x[cut], y[cut]
 
@@ -259,7 +259,7 @@ def root_analysis(x,y):
     #return x[~remove], y[~remove], x[remove], y[remove], popt[0], popt[1]
     return x[mask],y[mask],x[~mask],y[~mask],popt[0],popt[1], high, low
 
-if __name__ == '__main__':
+def validate_outliers():
     path = '../data/example'
     config = configparser.ConfigParser()
     # Getting path from .ini file
@@ -285,8 +285,8 @@ if __name__ == '__main__':
         x_3, y_3, l_3 = main.get_and_prepare(data_IvsI, '$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
         x_4, y_4, l_4 = main.get_and_prepare(data_IlimitvsI, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]')
 
-        scatter_cut(x_0,y_0,None,None,"$U_{DAC}$","$U_{out}$",f"Channel {channel} DAC Voltage")
-        scatter_cut(x_3,y_3,None,None,"$I_{SMU}$","$I_{outMon}$",f"Channel {channel} ADC I Monitoring")
+        #scatter_cut(x_0,y_0,None,None,"$U_{DAC}$","$U_{out}$",f"Channel {channel} DAC Voltage")
+        #scatter_cut(x_3,y_3,None,None,"$I_{SMU}$","$I_{outMon}$",f"Channel {channel} ADC I Monitoring")
 
         x_0, y_0, x_cut_0, y_cut_0 = cut_outliers(x_0, y_0, channel, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]', "U_{DAC}")
         x_1, y_1, x_cut_1, y_cut_1 = cut_outliers(x_1, y_1, channel, '$U_{out}$ [mV]', '$U_{regulator}$ [mV]', "U_{Regulator}")
@@ -300,91 +300,71 @@ if __name__ == '__main__':
         x_3, y_3, l_3 = main.get_and_prepare(data_IvsI, '$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
         x_4, y_4, l_4 = main.get_and_prepare(data_IlimitvsI, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]')
 
-        root_gain, root_offset = -145443, 2478
-        y_fit = x_3 * root_gain/10000 + root_offset/100
-        for i in range(l_3):
-            print(y_3[i],y_fit[i])
+def compare_chi():
+    config_root = configparser.ConfigParser()
+    config_root.read('../data/example/constants_from_root.ini')
+    path = '../data/example'
+    vars = ['DAC_VOLTAGE_GAIN', 'DAC_VOLTAGE_OFFSET', 'ADC_U_LOAD_GAIN', 'ADC_U_LOAD_OFFSET', 'ADC_U_REGULATOR_GAIN',
+            'ADC_U_REGULATOR_OFFSET',
+            'ADC_I_MON_GAIN', 'ADC_I_MON_OFFSET', 'DAC_CURRENT_GAIN', 'DAC_CURRENT_OFFSET']
+    for channel in [5,21]:
+        path_UvsU = os.path.join(path, f'Channel_{channel}_U_vs_U.dat')
+        columns_UvsU = ["$U_{DAC}$ [mV]", "$U_{out}$ [mV]", "$U_{regulator}$ [mV]", "$U_{load}$ [mV]", "unknown 5",
+                        "unknown 6"]
+        data_UvsU = main.read_data(path_UvsU, columns_UvsU)
 
-        root_chisquare = np.sum((y_3 - y_fit)**2/y_fit)
-        print(f"ROOT chi square: {root_chisquare}")
+        path_IvsI = os.path.join(path, f'Channel_{channel}_I_vs_I.dat')
+        columns_IvsI = ["unknown 1", "$I_{out(SMU)}$ [mA]", "$I_{outMon}$ [mV]", "$U_{outMon}$", "StatBit", "$U_{SMU}$"]
+        data_IvsI = main.read_data(path_IvsI, columns_IvsI)
 
-        """
-        #x_0, y_0, x_cut_0_gc, y_cut_0_gc = graph_Cleaner(x_0,y_0)
-        #scatter_cut(x_0, y_0, x_cut_0_gc, y_cut_0_gc, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]', f"Channel {channel}: GraphCleaner")
-        #x_2, y_2, x_cut_2_gc, y_cut_2_gc = graph_Cleaner(x_2, y_2)
-        x_3, y_3, x_cut_3_gc, y_cut_3_gc = graph_Cleaner(x_3, y_3)
-        scatter_cut(x_3,y_3,x_cut_3_gc,y_cut_3_gc,'$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]', f"Channel {channel} GraphCleaner")
-        x_3, y_3, x_3_cut, y_3_cut, m,n, fit_range_high, fit_range_low = root_analysis(x_3,y_3)
-        plt.figure()
-        plt.xlabel("$I_{out(SMU)}$")
-        plt.ylabel("$I_{outMon}$")
-        plt.title("Graph Cleaner and root analysis")
-        plt.scatter(x_3, y_3, color='black')
-        plt.scatter(x_3_cut, y_3_cut, color='grey')
-        x = np.concatenate((x_3,x_3_cut))
-        mask = (x>fit_range_high)&(x<fit_range_low)
-        plt.plot(x[mask],x[mask]*m+n,'r-')
-        # plt.show()
-        plt.savefig(os.path.join('../data/validation', f'Channel_{channel}_root_analysis'))
-        plt.close()
-        """
+        path_IlimitvsI = os.path.join(path, f'Channel_{channel}_Ilimit_vs_I.dat')
+        columns_IlimitvsI = ["$I_{lim,DAC}$ [mV]", "$I_{lim,SMU}$ [mA]", "unknown 3", "unknown 4", "StatBit"]
+        data_IlimitvsI = main.read_data(path_IlimitvsI, columns_IlimitvsI)
 
-"""
-    For Channel 21
-"""
-'''
-channel = 21
+        x_0, y_0, l_0 = main.get_and_prepare(data_UvsU, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]')
+        x_1, y_1, l_1 = main.get_and_prepare(data_UvsU, '$U_{out}$ [mV]', '$U_{regulator}$ [mV]')
+        x_2, y_2, l_2 = main.get_and_prepare(data_UvsU, '$U_{out}$ [mV]', '$U_{load}$ [mV]')
+        x_3, y_3, l_3 = main.get_and_prepare(data_IvsI, '$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
+        x_4, y_4, l_4 = main.get_and_prepare(data_IlimitvsI, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]')
 
-path_UvsU = "./../data/example/Channel_21_U_vs_U.dat"
-columns_UvsU = ["$U_{DAC}$ [mV]", "$U_{out}$ [mV]", "$U_{regulator}$ [mV]", "$U_{load}$ [mV]", "unknown 5","unknown 6"]
-data_UvsU = main.read_data(path_UvsU, columns_UvsU)
+        x_err_0 = np.ones_like(x_0) * 3.05
+        y_err_0 = main.SMU_V_error(y_0)
+        x_err_1 = main.SMU_V_error(x_1)
+        y_err_1 = np.ones_like(y_1) * 2.44
+        x_err_2 = main.SMU_V_error(x_2)
+        y_err_2 = np.ones_like(y_2) * 2.44
+        x_err_3 = main.SMU_I_error(x_3, channel)
+        y_err_3 = np.ones_like(y_3) * 2.44
+        x_err_4 = np.ones_like(x_4) * 3.05
+        y_err_4 = main.SMU_I_error(y_4, channel)
 
-path_IvsI = "./../data/example/Channel_21_I_vs_I.dat"
-columns_IvsI = ["unknown 1", "$I_{out(SMU)}$ [mA]", "$I_{outMon}$ [mV]", "$U_{outMon}$", "StatBit","$U_{SMU}$"]
-data_IvsI = main.read_data(path_IvsI, columns_IvsI)
+        constants = np.zeros(10)
+        for n in range(10):
+            constants[n] = float(config_root[f'{channel}'][f'{vars[n]}'])
 
-path_IlimitvsI = "./../data/example/Channel_21_Ilimit_vs_I.dat"
-columns_IlimitvsI = ["$I_{lim,DAC}$ [mV]", "$I_{lim,SMU}$ [mA]", "unknown 3", "unknown 4", "StatBit"]
-data_IlimitvsI = main.read_data(path_IlimitvsI, columns_IlimitvsI)
+        y_fit_0 = x_0 * constants[0]/10000 + constants[1]/100
+        y_fit_1 = x_1 * constants[2] / 10000 + constants[3] / 100
+        y_fit_2 = x_2 * constants[4] / 10000 + constants[5] / 100
+        y_fit_3 = x_3 * constants[6] / 10000 + constants[7] / 100
+        y_fit_4 = x_4 * constants[8] / 10000 + constants[9] / 100
 
-x_0,y_0,l_0= main.get_and_prepare(data_UvsU, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]')
-#x_0, y_0,x_cut_0,y_cut_0 = cut_outliers(x_0, y_0, channel)
-x_0, y_0, x_cut_0gc, y_cut_0gc = graph_Cleaner(x_0,y_0)
-x_0, y_0, x_cut_0, y_cut_0 = define_range(x_0,y_0)
-y_cut_0 = np.concatenate((y_cut_0,y_cut_0gc), axis=None)
-x_cut_0 = np.concatenate((x_cut_0,x_cut_0gc), axis=None)
-scatter_cut(x_0,y_0,x_cut_0,y_cut_0, '$U_{DAC}$ [mV]','$U_{out}$ [mV]',f"Channel {channel}: graphCleaner")
+        chi_square = np.zeros(5)
+        chi_square[0] = np.sum((y_0-y_fit_0)**2/y_fit_0)
+        chi_square[1] = np.sum((y_1 - y_fit_1) ** 2 / y_err_1)
+        chi_square[2] = np.sum((y_2 - y_fit_2) ** 2 / y_err_2)
+        chi_square[3] = np.sum((y_3 - y_fit_3) ** 2 / y_err_3)
+        chi_square[4] = np.sum((y_4 - y_fit_4) ** 2 / y_err_4)
 
-"""
-    For Channel 0 with scattering values
-"""
+        red_chi = np.zeros_like(chi_square)
+        red_chi[0] = chi_square[0] / (len(y_0)-2)
+        red_chi[1] = chi_square[1] / (len(y_1) - 2)
+        red_chi[2] = chi_square[2] / (len(y_2) - 2)
+        red_chi[3] = chi_square[3] / (len(y_3) - 2)
+        red_chi[4] = chi_square[4] / (len(y_4) - 2)
 
-channel = 5
+        print(chi_square)
+        print(red_chi)
 
-path_UvsU = f"./../data/example/Channel_{channel}_U_vs_U.dat"
-columns_UvsU = ["$U_{DAC}$ [mV]", "$U_{out}$ [mV]", "$U_{regulator}$ [mV]", "$U_{load}$ [mV]", "unknown 5","unknown 6"]
-data_UvsU = main.read_data(path_UvsU, columns_UvsU)
-
-path_IvsI = f"./../data/example/Channel_{channel}_I_vs_I.dat"
-columns_IvsI = ["unknown 1", "$I_{out(SMU)}$ [mA]", "$I_{outMon}$ [mV]", "$U_{outMon}$", "StatBit","$U_{SMU}$"]
-data_IvsI = main.read_data(path_IvsI, columns_IvsI)
-
-path_IlimitvsI = f"./../data/example/Channel_{channel}_Ilimit_vs_I.dat"
-columns_IlimitvsI = ["$I_{lim,DAC}$ [mV]", "$I_{lim,SMU}$ [mA]", "unknown 3", "unknown 4", "StatBit"]
-data_IlimitvsI = main.read_data(path_IlimitvsI, columns_IlimitvsI)
-
-x_1,y_1,l_1 = main.get_and_prepare(data_IvsI,'$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
-#x_1,y_1,x_cut_1,y_cut_1 = cut_outliers(x_1,y_1,channel)
-#scatter_cut(x_1,y_1,x_cut_1,y_cut_1,"","",f"Channel {channel}: Cut outliers")
-
-x_1,y_1,l_1 = main.get_and_prepare(data_IvsI,'$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
-x_1, y_1, x_cut_1gc, y_cut_1gc = graph_Cleaner(x_1,y_1)
-x_1, y_1, x_cut_1, y_cut_1 = define_range(x_1,y_1)
-y_cut_1 = np.concatenate((y_cut_1,y_cut_1gc), axis=None)
-x_cut_1 = np.concatenate((x_cut_1,x_cut_1gc), axis=None)
-scatter_cut(x_1,y_1,x_cut_1,y_cut_1,'$I_{out(SMU)}$ [mA]','$I_{outMon}$ [mV]',f"Channel {channel}: graphCleaner")
-'''
-"""
-    Note: Graph Cleaner does work. Criteria is weird. Can not remove points (due to 5 sigma environment). Does not reproduce exact results for Channel 5!!!
-    New: Consider fit and residual criteria
-"""
+#clear_directory()
+validate_outliers()
+#compare_chi()
