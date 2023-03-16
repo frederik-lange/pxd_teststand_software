@@ -335,13 +335,28 @@ def pass_fail(l_1, deleted_points):
 def check_range(name,channel,config_ini):
     in_range = False
     value = float(config_ini[f'{channel}'].get(name))
+    '''
     config_vals = configparser.ConfigParser()
     config_errs = configparser.ConfigParser()
     config_vals.read('../data/database.ini')
     config_errs.read('../data/database_std.ini')
     mean = float(config_vals[f'{channel}'][f'{name}_{channel}'])
     std = float(config_errs[f'{channel}'][f'{name}_{channel}'])
-    upper, lower = mean + 4*std, mean - 4*std
+    '''
+    # add array that assigns channels to groups
+    group = ['ASIC','ASIC','ASIC','ASIC','ASIC','5','ASIC','ASIC','ccg','ccg','ccg','ccg','12','13','14','15','gate','gate','gate','gate','clear','sw','sw','clear']
+    config_range = configparser.ConfigParser()
+    config_range.read('../data/final_ranges.ini')
+    if channel == 1 and (name == 'ADC_I_MON_GAIN' or name == 'ADC_I_MON_OFFSET' or name == 'DAC_CURRENT_GAIN' or name == 'DAC_CURRENT_OFFSET'):
+        mean = float(config_range['1'][f'{name}'])
+        std = float(config_range['1'][f'{name}_diff'])
+    elif channel == 7 and (name == 'DAC_CURRENT_GAIN' or name == 'DAC_CURRENT_OFFSET'):
+        mean = float(config_range['7'][f'{name}'])
+        std = float(config_range['7'][f'{name}_diff'])
+    else:
+        mean = float(config_range[f'{group[channel]}'][f'{name}'])
+        std = float(config_range[f'{group[channel]}'][f'{name}_diff'])
+    upper, lower = mean + 5*std, mean - 5*std
     if value > upper or value < lower:
         in_range = False
         print(f'Warning! Please check channel {channel}. {name} out of usual range!')

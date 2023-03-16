@@ -277,7 +277,7 @@ def grouping_boxplots():
             pdf.savefig()
             plt.close()
 
-def calc_mean(config,group,name,digital,writer):
+def calc_mean(config,group,name,ASIC,writer):
     means = []
     #print(group)
     for const in range(10):
@@ -286,7 +286,7 @@ def calc_mean(config,group,name,digital,writer):
         for x in range(len(values)):
             values[x] = config[f'{group[x]}'][f'{vars[const]}_{group[x]}']
             #print(group[x],values[x])
-        if digital == True:
+        if ASIC == True:
             if const == 6 or const == 7:
                 #means.append(np.mean(values[0,2:]))
                 values = np.delete(values,1)
@@ -301,13 +301,13 @@ def calc_mean(config,group,name,digital,writer):
     means.insert(1, 'mean')
     writer.writerow(means)
 
-def calc_std(config,group,name,digital,writer):
+def calc_std(config,group,name,ASIC,writer):
     stds = []
     for const in range(10):
         values = np.zeros(len(group))
         for x in range(len(values)):
             values[x] = config[f'{group[x]}'][f'{vars[const]}_{group[x]}']
-        if digital == True:
+        if ASIC == True:
             if const == 6 or const == 7:
                 #means.append(np.mean(values[0,2:]))
                 values = np.delete(values,1)
@@ -333,8 +333,8 @@ def calculate_valid_constants():
         writer.writerow(header_names)
         #writer = csv.DictWriter(csvfile, fieldnames=header_names)
         #writer.writeheader()
-        calc_mean(config_mean,group1,'digital',True,writer)
-        calc_std(config_std,group1,'digital',True,writer)
+        calc_mean(config_mean,group1,'ASIC',True,writer)
+        calc_std(config_std,group1,'ASIC',True,writer)
         calc_mean(config_mean,group2,'ccg',False,writer)
         calc_std(config_std,group2,'ccg',False,writer)
         calc_mean(config_mean, group3, 'gate', False, writer)
@@ -371,9 +371,9 @@ def calculate_range_total(writer):
         if const == 7:
             help_group = np.delete(help_group,5)
     #print(means)
-    list = ['digital','mean'] + means.tolist()
+    list = ['ASIC','mean'] + means.tolist()
     writer.writerow(list)
-    list = ['digital','std'] + stds.tolist()
+    list = ['ASIC','std'] + stds.tolist()
     writer.writerow(list)
     ini_list = list[2:].copy()
     print(ini_list)
@@ -445,6 +445,32 @@ def constants_variance_single():
             plt.bar(x,y)
             pdf.savefig()
 
+def constants_variance_total():
+    data = pd.read_csv('../data/final_ranges.csv',header=None)
+    data = data.T
+    data.drop(0,axis=0)
+    print(data)
+    with PdfPages(f'../data/final_ranges.pdf') as pdf:
+        x,y = np.arange(0,10,1), np.zeros(10)
+        group_names = data[0][2:12].tolist()
+        for const in range(10):
+            values = data[2*const+2][2:]
+            plt.figure()
+            _, ax = plt.subplots()
+            for group in range(10):
+                y[group] = values[group+2]
+            plt.bar(x,y)
+            plt.title(vars[const].replace("_"," "))
+            if const % 2 == 0:
+                plt.ylabel('Relative range differences')
+            else:
+                plt.ylabel('Absolute range differences')
+            ax.set_xticks(x)
+            xt = group_names[:5]+['source','poly','HV','guard','bulk']
+            ax.set_xticklabels(xt)
+            pdf.savefig()
+            plt.close()
+
 def final_ranges_to_ini():
     # for the groups:
     config = configparser.ConfigParser()
@@ -463,7 +489,7 @@ def final_ranges_to_ini():
     config_channel_std = configparser.ConfigParser()
     config_channel_std.read('../data/database_std.ini')
 
-    # for channel 1 and 7 in the digital group
+    # for channel 1 and 7 in the ASIC group
     config_dict = {}
     for name in ['DAC_CURRENT_GAIN','DAC_CURRENT_OFFSET','ADC_I_MON_GAIN','ADC_I_MON_OFFSET']:
         config_dict[name] = config_channel['1'][f'{name}_1']
@@ -492,17 +518,17 @@ def final_ranges_relative():
     d = vars.copy()
     for l in range(len(d)):
         d.insert(2*l+1,f'{vars[l]}_DIFF')
-    df = pd.DataFrame(data=d)
+    df = pd.DataFrame(data=d, columns=['Group'])
     #print(df)
-    groups = ['digital','ccg','gate','sw','clear','5','12','13','14']
+    groups = ['ASIC','ccg','gate','sw','clear','5','12','13','14','15']
     for name in groups:
         list = []
         for item in d[:]:
             list.append(config[name][item])
         df[name] = list
-    df['1'] = df['digital']
-    df['7'] = df['digital']
-    #df.rename(columns={'digital': '1', 'digital': '7'})
+    df['1'] = df['ASIC']
+    df['7'] = df['ASIC']
+    #df.rename(columns={'ASIC': '1', 'ASIC': '7'})
     df['1'][12] = config['1']['ADC_I_MON_GAIN']
     df['1'][13] = config['1']['ADC_I_MON_GAIN_DIFF']
     df['1'][14] = config['1']['ADC_I_MON_OFFSET']
@@ -524,9 +550,13 @@ def final_ranges_relative():
     for name in groups:
         for n in range(5):
             df[name][1+ n*4] = np.abs(float(df[name][1+n*4])/float(df[name][n*4]))
-    df.to_csv('../data/final_ranges_relative.csv')
+    df.to_csv('../data/final_ranges.csv')
 
 if __name__ == '__main__':
+    check_all()
+    ######
+    # Note: 60 out of 201 calibrations are successful with the new range!
+    ######
     #boxplot_per_constant()
     #boxplot_per_channel()
     #channel_grouping()
@@ -534,9 +564,6 @@ if __name__ == '__main__':
     #grouping_boxplots()
     #calculate_valid_constants()
     #final_ranges_to_ini()
-    #constants_variance()
-    final_ranges_relative()
-    #data = pd.read_csv(f'./../data/database.csv')
-    #valid = data['used_for_range'] == 'yes'
-    #print(data['Unit'][valid])
-    #print(data['DAC_CURRENT_OFFSET_13'][valid])
+    #constants_variance_grouped()
+    #final_ranges_relative()
+    #constants_variance_total()
