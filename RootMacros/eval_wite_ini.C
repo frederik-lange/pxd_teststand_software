@@ -16,7 +16,7 @@ gROOT->ProcessLine(".L bisec.C");
 gROOT->ProcessLine(".L graphCleaner.C");
 int num_files=24; // fixed value! --> files have ID, files not there are set to default
 //int num_cal=5;   // not used
-int node=56;
+int node=87;
 int max_point=1000;
 TString pathname;
 
@@ -53,10 +53,10 @@ int num_pts;
 //********************************************************
 cout<<"Define Path to Data:"<< endl;
 
-TString path="";
+TString path="/home/silab44/pxd_teststand_software_frederik/data/example/";
 
 // this is the default path the calibration outputs to
-path="C:/Users/LMUPS/Documents/GitHub/pxd_teststand_software/LightCal_build/target/Debug/4_Calibration_ps15/";
+path="/home/silab44/pxd_teststand_software_frederik/data/example/";
 
 // all the following pathes are for debugging only
 // path = "C:/root/callibration/test2_PS41_FS/";
@@ -77,7 +77,7 @@ cout<<"tags and path parts"<< endl;
 TString part1="Channel_";
 TString part3=".dat";
 TString uu="_U_vs_U";
-TString ii="_I_Vs_I";
+TString ii="_I_vs_I";
 TString ilim="_Ilimit_vs_I";
 
 TString string;
@@ -393,15 +393,14 @@ if (j==3){
 	p0 += parameter2[0];
 	p1 += parameter2[1];	
 	TLatex text;
-	p0.Form("%4.2f", p0);
-	p1.Form("%4.8f");	p0.Form("%4.2f", p0);
-	p1.Form("%4.8f");
-	text.DrawLatex(0.2, 0.6, p0.Data());
-	text.DrawLatex(0.2, 0.4, p1.Data());
+	//p0.Form("%4.2f", p0);
+	//p1.Form("%4.8f",p1);
+	//text.DrawLatex(0.2, 0.6, p0.Data());
+	//text.DrawLatex(0.2, 0.4, p1.Data());
 }
 	}// channel fit loop
 
-pathname = Form("C:/Users/LMUPS/Documents/GitHub/pxd_teststand_software/LightCal_build/target/Debug/4_Calibration_ps15/plots/Channel%d.pdf", i);
+pathname = Form("/home/silab44/pxd_teststand_software_frederik/data/example/plots/Channel%d.pdf", i);
 
 cout << endl << "The path is " << pathname << endl;
 tcan[i]->SaveAs(pathname);	
@@ -434,7 +433,7 @@ TString calli;
 ofstream myfile;
 
 //TString filename="C:/root/Callibration/constants_node_";
-TString filename="C:/Users/LMUPS/Documents/GitHub/pxd_teststand_software/LightCal_build/target/Debug/4_Calibration_ps15/constants_node_";
+TString filename="/home/silab44/pxd_teststand_software_frederik/data/example/constants_node_";
 
 filename+=node;
 filename+=".ini";

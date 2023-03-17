@@ -41,7 +41,7 @@ int graphCleaner(TGraph *graph){
 double quant[2];
 double prob[2] ;
 prob[0]=0.3;
-prob=[1]=0.7;
+prob[1]=0.7;
 double robustRmsY,robustRmsX;
 double X_Win[15],Y_Win[15],X_WinSort[10],Y_WinSort[10];
 int index[15];
