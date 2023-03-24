@@ -552,8 +552,37 @@ def final_ranges_relative():
             df[name][1+ n*4] = np.abs(float(df[name][1+n*4])/float(df[name][n*4]))
     df.to_csv('../data/final_ranges.csv')
 
+def compare_values_to_new_range():
+    group = 'ccg'
+    channels = np.array([8,9,10,11])
+    data = pd.read_csv('../data/database.csv')
+    valid = data['used_for_range'] == 'yes'
+    config_range = configparser.ConfigParser()
+    config_range.read('../data/final_ranges.ini')
+    with PdfPages(f'../data/compare_values_to_range_{group}.pdf') as pdf:
+        for const in vars:
+            plt.figure()
+            _,ax = plt.subplots()
+            env = 5
+            range_high, range_low = float(config_range[f'{group}'][const]) + env*float(config_range[f'{group}'][f'{const}_diff']), float(config_range[f'{group}'][const]) - env*float(config_range[f'{group}'][f'{const}_diff'])
+            plt.ylim(range_low - 2*float(config_range[f'{group}'][f'{const}_diff']), range_high+2*float(config_range[f'{group}'][f'{const}_diff']))
+            plt.fill_between(x=np.array([np.amin(channels)-0.5,np.amax(channels)+0.5]), y1=range_low, y2=range_high, alpha = 0.6,label='valid range')
+            for channel in channels:
+                values = data[f'{const}_{channel}'][valid]
+                x = np.ones_like(values) * channel
+                plt.scatter(x, values,label=channel_names[channel])
+            plt.title(const)
+            plt.xlabel('Channels')
+            plt.ylabel('Constant value')
+            ax.set_xticks(channels)
+            ax.set_xticklabels(channels)
+            plt.legend()
+            plt.tight_layout()
+            pdf.savefig()
+            plt.close()
+
 if __name__ == '__main__':
-    check_all()
+    #check_all()
     ######
     # Note: 60 out of 201 calibrations are successful with the new range!
     ######
@@ -567,3 +596,4 @@ if __name__ == '__main__':
     #constants_variance_grouped()
     #final_ranges_relative()
     #constants_variance_total()
+    compare_values_to_new_range()

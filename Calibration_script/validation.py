@@ -42,6 +42,7 @@ def scatter_grad(x,y,xlabel,ylabel,title,cutoff):
     title = title.replace("{","")
     title = title.replace("}", "")
     title = title.replace("$", "")
+    plt.tight_layout()
     plt.savefig(os.path.join('../data/validation',title))
     plt.close()
 
@@ -60,6 +61,7 @@ def scatter_slope(x,y,xlabel,ylabel,title,mean,std):
     title = title.replace("{","")
     title = title.replace("}", "")
     title = title.replace("$", "")
+    plt.tight_layout()
     plt.savefig(os.path.join('../data/validation',title))
     plt.close()
 
@@ -75,6 +77,7 @@ def scatter_cut(x,y,x_cut,y_cut,xlabel,ylabel,title):
     title = title.replace("{","")
     title = title.replace("}", "")
     title = title.replace("$", "")
+    plt.tight_layout()
     plt.savefig(os.path.join('../data/validation',title))
     plt.close()
 
@@ -285,8 +288,8 @@ def validate_outliers():
         x_3, y_3, l_3 = main.get_and_prepare(data_IvsI, '$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
         x_4, y_4, l_4 = main.get_and_prepare(data_IlimitvsI, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]')
 
-        #scatter_cut(x_0,y_0,None,None,"$U_{DAC}$","$U_{out}$",f"Channel {channel} DAC Voltage")
-        #scatter_cut(x_3,y_3,None,None,"$I_{SMU}$","$I_{outMon}$",f"Channel {channel} ADC I Monitoring")
+        scatter_cut(x_0,y_0,None,None,"$U_{DAC}$","$U_{out}$",f"Channel {channel} DAC Voltage")
+        scatter_cut(x_3,y_3,None,None,"$I_{SMU}$","$I_{outMon}$",f"Channel {channel} ADC I Monitoring")
 
         x_0, y_0, x_cut_0, y_cut_0 = cut_outliers(x_0, y_0, channel, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]', "U_{DAC}")
         x_1, y_1, x_cut_1, y_cut_1 = cut_outliers(x_1, y_1, channel, '$U_{out}$ [mV]', '$U_{regulator}$ [mV]', "U_{Regulator}")
@@ -295,4 +298,4 @@ def validate_outliers():
         x_4, y_4, x_cut_4, y_cut_4 = cut_outliers(x_4, y_4, channel, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]', "I_{Limit}")
 
 #clear_directory()
-#validate_outliers()
+validate_outliers()

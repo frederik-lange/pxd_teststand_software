@@ -51,7 +51,7 @@ def plot_residuals(x,r, cut, cutoff, title,name):
     plt.savefig(os.path.join(path,'statistics',name))
     return None
 
-def cut_outliers(x,y):
+def cut_outliers(x,y,channel):
     # range criteria (remove saturation)
     ymax, ymin = np.amax(y), np.amin(y)
     range = ymax - ymin
@@ -147,7 +147,7 @@ def cut_outliers(x,y):
     cut = cut + cut1
 
     #print(f"Mean and median of abs(r): {np.mean(r)}, {np.median(r)}")
-    plot_residuals(x,r, cut, cutoff,f"Channel {channel}: Absolute values of residuals",f"Channel {channel} Residuals")
+    plot_residuals(x,r, cut, cutoff,f"Channel {channel}: residuals",f"Channel {channel} Residuals")
 
     popt, perr, red_chi_2 = fit.fit_odr(fit_func=lin, x=x[~cut], y=y[~cut], x_err=x_err[~cut], y_err=y_err[~cut], p0=[popt[0], popt[1]])
     #print(popt)
@@ -192,32 +192,36 @@ def outliers_old(x, y):
 
     return x[~cut], y[~cut],x[cut], y[cut]
 
+def outliers():
+    for channel in [5,21]:
+        path_UvsU = os.path.join(path,f'Channel_{channel}_U_vs_U.dat')
+        # Test File
+        #path_UvsU = f"./../data/statistics/Channel_{channel}_U_vs_U_test.dat"
+        columns_UvsU = ["$U_{DAC}$ [mV]", "$U_{out}$ [mV]", "$U_{regulator}$ [mV]", "$U_{load}$ [mV]", "unknown 5","unknown 6"]
+        data_UvsU = main.read_data(path_UvsU, columns_UvsU)
 
-for channel in [5,21]:
-    path_UvsU = os.path.join(path,f'Channel_{channel}_U_vs_U.dat')
-    # Test File
-    #path_UvsU = f"./../data/statistics/Channel_{channel}_U_vs_U_test.dat"
-    columns_UvsU = ["$U_{DAC}$ [mV]", "$U_{out}$ [mV]", "$U_{regulator}$ [mV]", "$U_{load}$ [mV]", "unknown 5","unknown 6"]
-    data_UvsU = main.read_data(path_UvsU, columns_UvsU)
+        path_IvsI = os.path.join(path,f"Channel_{channel}_I_vs_I.dat")
+        # Test File
+        #path_IvsI = f"./../data/statistics/Channel_{channel}_I_vs_I_test.dat"
+        columns_IvsI = ["unknown 1", "$I_{out(SMU)}$ [mA]", "$I_{outMon}$ [mV]", "$U_{outMon}$", "StatBit","$U_{SMU}$"]
+        data_IvsI = main.read_data(path_IvsI, columns_IvsI)
 
-    path_IvsI = os.path.join(path,f"Channel_{channel}_I_vs_I.dat")
-    # Test File
-    #path_IvsI = f"./../data/statistics/Channel_{channel}_I_vs_I_test.dat"
-    columns_IvsI = ["unknown 1", "$I_{out(SMU)}$ [mA]", "$I_{outMon}$ [mV]", "$U_{outMon}$", "StatBit","$U_{SMU}$"]
-    data_IvsI = main.read_data(path_IvsI, columns_IvsI)
+        path_IlimitvsI = os.path.join(path,f'Channel_{channel}_Ilimit_vs_I.dat')
+        columns_IlimitvsI = ["$I_{lim,DAC}$ [mV]", "$I_{lim,SMU}$ [mA]", "unknown 3", "unknown 4", "StatBit"]
+        data_IlimitvsI = main.read_data(path_IlimitvsI, columns_IlimitvsI)
 
-    path_IlimitvsI = os.path.join(path,f'Channel_{channel}_Ilimit_vs_I.dat')
-    columns_IlimitvsI = ["$I_{lim,DAC}$ [mV]", "$I_{lim,SMU}$ [mA]", "unknown 3", "unknown 4", "StatBit"]
-    data_IlimitvsI = main.read_data(path_IlimitvsI, columns_IlimitvsI)
+        # For Current
+        x_0, y_0, l_0 = main.get_and_prepare(data_UvsU, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]')
+        x_1, y_1, l_1 = main.get_and_prepare(data_UvsU, '$U_{out}$ [mV]', '$U_{regulator}$ [mV]')
+        x_2, y_2, l_2 = main.get_and_prepare(data_UvsU, '$U_{out}$ [mV]', '$U_{load}$ [mV]')
+        x_3, y_3, l_3 = main.get_and_prepare(data_IvsI, '$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
+        x_4, y_4, l_4 = main.get_and_prepare(data_IlimitvsI, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]')
 
-    # For Current
-    x_0, y_0, l_0 = main.get_and_prepare(data_UvsU, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]')
-    x_1, y_1, l_1 = main.get_and_prepare(data_UvsU, '$U_{out}$ [mV]', '$U_{regulator}$ [mV]')
-    x_2, y_2, l_2 = main.get_and_prepare(data_UvsU, '$U_{out}$ [mV]', '$U_{load}$ [mV]')
-    x_3, y_3, l_3 = main.get_and_prepare(data_IvsI, '$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
-    x_4, y_4, l_4 = main.get_and_prepare(data_IlimitvsI, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]')
+        if channel == 5:
+            x_3,y_3,x_cut_3,y_cut_3, m, n = cut_outliers(x_3,y_3,channel)
+        if channel == 21:
+            x_0, y_0, x_cut_0, y_cut_0, m, n = cut_outliers(x_0, y_0,channel)
 
-    x_3,y_3,x_cut_3,y_cut_3, m, n = cut_outliers(x_3,y_3)
 
 def compare_chi():
     # compare chi square values of the different methods
@@ -297,4 +301,5 @@ def compare_chi():
         chi_sq_3 = np.sum((y_3 - y_fit_3) ** 2 / y_err_3 ** 2) / (len(y_3)-2)
         print(chi_sq_3)
 
-compare_chi()
+#compare_chi()
+outliers()
