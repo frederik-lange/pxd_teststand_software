@@ -111,24 +111,28 @@ def boxplot_per_constant():
     plotnames = ['DAC_VOLTAGE_GAIN', 'DAC_VOLTAGE_OFFSET', 'ADC_U_LOAD_GAIN', 'ADC_U_LOAD_OFFSET',
                  'ADC_U_REGULATOR_GAIN', 'ADC_U_REGULATOR_OFFSET',
                  'ADC_I_MON_GAIN', 'ADC_I_MON_OFFSET', 'DAC_CURRENT_GAIN', 'DAC_CURRENT_OFFSET']
-    with PdfPages(f'../data/database_boxplots_per_constant.pdf') as pdf:
-        x = np.arange(0, 24, 1)
-        print(x)
-        for n in range(10):
-            print(f"Plotting {plotnames[n]}...")
-            mask = data['used_for_range'] == 'yes'
-            fig, ax = plt.subplots()
-            y = np.zeros((24, len(data[names[0]][mask])))
-            list = []
-            for channel in range(24):
-                y[channel] = data[names[4 + channel*10 + n]][mask]
-                list.append(y[channel])
-            plt.xlabel('Channels')
-            plt.title(plotnames[n])
-            ax.boxplot(list, positions=x)
-            plt.xticks(x)
-            pdf.savefig()
-            plt.close(fig)
+    #with PdfPages(f'../data/database_boxplots_per_constant.pdf') as pdf:
+    x = np.arange(0, 24, 1)
+    print(x)
+    for n in range(10):
+        with PdfPages(f'/home/silab44/Desktop/Frederik/Plots/boxplots_{vars[n]}.pdf') as pdf:
+                print(f"Plotting {plotnames[n]}...")
+                mask = data['used_for_range'] == 'yes'
+                fig, ax = plt.subplots()
+                fig.set_figheight(4)
+                fig.set_figwidth(7)
+                y = np.zeros((24, len(data[names[0]][mask])))
+                list = []
+                for channel in range(24):
+                    y[channel] = data[names[4 + channel*10 + n]][mask]
+                    list.append(y[channel])
+                plt.xlabel('Channels')
+                plt.title(plotnames[n].replace("_", " "))
+                ax.boxplot(list, positions=x)
+                plt.xticks(x)
+                plt.tight_layout()
+                pdf.savefig()
+                plt.close(fig)
 
 def constant_precision():
     pass
@@ -193,7 +197,7 @@ def channel_grouping():
             fig, ax = plt.subplots(2, 3)
             fig.set_figheight(5)
             fig.set_figwidth(10)
-            fig.suptitle(plotnames[n])
+            fig.suptitle(plotnames[n].replace("_", " "))
             means, stds = np.zeros(24), np.zeros(24)
             for channel in range(24):
                 means[channel] = float(config_mean[f'{channel}'][plotnames[n] + f'_{channel}'])
@@ -224,20 +228,21 @@ def channel_grouping():
             plt.close()
 
 def grouping_boxplots():
-    # box plots for all channels grouped
+    # boxplots for all channels grouped
     data = pd.read_csv('./../data/database.csv')
     mask = data['used_for_range'] == 'yes'
     plotnames = ['DAC_VOLTAGE_GAIN', 'DAC_VOLTAGE_OFFSET', 'ADC_U_LOAD_GAIN', 'ADC_U_LOAD_OFFSET',
                  'ADC_U_REGULATOR_GAIN', 'ADC_U_REGULATOR_OFFSET',
                  'ADC_I_MON_GAIN', 'ADC_I_MON_OFFSET', 'DAC_CURRENT_GAIN', 'DAC_CURRENT_OFFSET']
     groups = [group1, group2, group3, group4, group5, group6]
-    with PdfPages(f'../data/channel_grouping_boxplots.pdf') as pdf:
-        for n in range(10):
-            print(f"Plotting {plotnames[n]}...")
+    #with PdfPages(f'../data/channel_grouping_boxplots.pdf') as pdf:
+    for n in range(10):
+        print(f"Plotting {plotnames[n]}...")
+        with PdfPages(f'/home/silab44/Desktop/Frederik/Plots/boxplots_grouped_{vars[n]}.pdf') as pdf:
             fig, ax = plt.subplots(2, 3)
             fig.set_figheight(5)
-            fig.set_figwidth(12)
-            st = fig.suptitle(plotnames[n])
+            fig.set_figwidth(11)
+            st = fig.suptitle(plotnames[n].replace("_", " "))
             for plot in range(6):
                 x = np.array(groups[plot])
                 xt = []
@@ -590,10 +595,10 @@ if __name__ == '__main__':
     #boxplot_per_channel()
     #channel_grouping()
     #channel_grouping_by_board()
-    #grouping_boxplots()
+    grouping_boxplots()
     #calculate_valid_constants()
     #final_ranges_to_ini()
     #constants_variance_grouped()
     #final_ranges_relative()
     #constants_variance_total()
-    compare_values_to_new_range()
+    #compare_values_to_new_range()
