@@ -235,10 +235,10 @@ def grouping_boxplots():
                  'ADC_U_REGULATOR_GAIN', 'ADC_U_REGULATOR_OFFSET',
                  'ADC_I_MON_GAIN', 'ADC_I_MON_OFFSET', 'DAC_CURRENT_GAIN', 'DAC_CURRENT_OFFSET']
     groups = [group1, group2, group3, group4, group5, group6]
-    #with PdfPages(f'../data/channel_grouping_boxplots.pdf') as pdf:
-    for n in range(10):
-        print(f"Plotting {plotnames[n]}...")
-        with PdfPages(f'/home/silab44/Desktop/Frederik/Plots/boxplots_grouped_{vars[n]}.pdf') as pdf:
+    with PdfPages(f'../data/channel_grouping_boxplots.pdf') as pdf:
+        for n in range(10):
+            print(f"Plotting {plotnames[n]}...")
+        #with PdfPages(f'/home/silab44/Desktop/Frederik/Plots/boxplots_grouped_{vars[n]}.pdf') as pdf:
             fig, ax = plt.subplots(2, 3)
             fig.set_figheight(5)
             fig.set_figwidth(11)

@@ -127,8 +127,12 @@ def max_differences():
         writer.writerows(max_diff)
                 #std_gains[channel], std_offsets[channel] = float(config_std[f'{channel}'][name + f'_GAIN_{channel}']) / gains1, float(config_std[f'{channel}'][name + f'_OFFSET_{channel}'])
 
-def calibration_optimaization():
+def calibration_optimization():
     data = np.loadtxt('../data/PS_105_max_differences.csv', delimiter=',', skiprows=0)
+    config_vals = configparser.ConfigParser()
+    config_vals.read('../data/PS_105_constants.ini')
+    config_stds = configparser.ConfigParser()
+    config_stds.read('../data/PS_105_constants_std.ini')
     names = ['DAC_VOLTAGE', 'ADC_U_LOAD', 'ADC_U_REGULATOR', 'ADC_I_MON', 'DAC_CURRENT']
     calibrations = ['40 points', '50 points', '60 points', '60 points', '70 points']
     colors = ['b', 'r', 'g', 'm', 'c']
@@ -141,14 +145,20 @@ def calibration_optimaization():
             plt.axhline(0, color='black')
             # Gains:
             for channel in range(24):
+                std_rel =  float(config_stds[f'{channel}'][names[var]+f'_GAIN_{channel}']) / float(config_vals[f'{channel}'][names[var]+f'_GAIN_{channel}']) * 100*3
+                if channel == 0:
+                    plt.bar(channel + 0.5, 2 * std_rel, bottom=-std_rel, width=1, alpha=0.5, color='grey', label='$3\sigma$')
+                else:
+                    plt.bar(channel + 0.5, 2 * std_rel, bottom=-std_rel, width=1, alpha=0.5, color='grey')
                 for cal in range(5):
                     if channel == 0:
-                        plt.bar(channel+0.2*cal,data[channel*10+var*2,cal],label=f'{calibrations[cal]}',width=0.2, color=colors[cal])
+                        plt.bar(channel+0.2*cal+0.1,data[channel*10+var*2,cal],label=f'{calibrations[cal]}',width=0.2, color=colors[cal],alpha = 1)
                     else:
-                        plt.bar(channel + 0.2 * cal, data[channel * 10 + var * 2, cal], width=0.2, color=colors[cal])
+                        plt.bar(channel + 0.2 * cal+0.1, data[channel * 10 + var * 2, cal], width=0.2, color=colors[cal],alpha = 1)
             plt.title(names[var] + ' GAIN')
             plt.ylabel('Relative difference in %'), plt.xlabel('Channels')
             plt.legend()
+            plt.tight_layout()
             pdf.savefig()
             plt.close()
 
@@ -160,16 +170,31 @@ def calibration_optimaization():
             plt.axhline(0, color='black')
             # Gains:
             for channel in range(24):
+                diff_abs = float(config_stds[f'{channel}'][names[var] + f'_OFFSET_{channel}'])*3
+                if channel == 0:
+                    plt.bar(channel + 0.5, 2 * diff_abs, bottom=-diff_abs, width=1, alpha=0.5, color='grey',label='$3\sigma$')
+                else:
+                    plt.bar(channel + 0.5, 2 * diff_abs, bottom=-diff_abs, width=1, alpha=0.5, color='grey')
                 for cal in range(5):
                     if channel == 0:
-                        plt.bar(channel+0.2*cal,data[channel*10+var*2+1,cal],label=f'{calibrations[cal]}',width=0.2, color=colors[cal])
+                        plt.bar(channel+0.2*cal+0.1,data[channel*10+var*2+1,cal],label=f'{calibrations[cal]}',width=0.2, color=colors[cal],alpha = 1)
                     else:
-                        plt.bar(channel + 0.2 * cal, data[channel * 10 + var * 2+1, cal], width=0.2, color=colors[cal])
+                        plt.bar(channel + 0.2 * cal+0.1, data[channel * 10 + var * 2+1, cal], width=0.2, color=colors[cal],alpha = 1)
             plt.title(names[var] + ' Offset')
             plt.ylabel('Absolute difference'), plt.xlabel('Channels')
             plt.legend()
+            plt.tight_layout()
             pdf.savefig()
             plt.close()
 
 if __name__ == '__main__':
-    calibration_optimaization()
+    calibration_optimization()
+    '''for x in range(24):
+        for y in range(1,4):
+            sx, sy = str(x), str(y)
+            if y == 3:
+                print("\\begin{figure}\n \\centering\n \\includegraphics[page=",sy,",angle=90,height=0.95\\textheight]{figs/appendix/Channel_",sx,".pdf}\n\\caption{PS 105 Channel ",sx,"}\n \\label{fig:ps105_ch",sx,"}\n\end{figure}",sep='')
+                print("\\clearpage")
+            else:
+                print("\\begin{figure}\n \\centering\n \\includegraphics[page=", sy,",angle=90,height=0.95\\textheight]{figs/appendix/Channel_", sx, ".pdf}\n\end{figure}", sep='')
+    '''
