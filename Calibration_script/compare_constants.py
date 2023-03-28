@@ -143,11 +143,12 @@ def calibration_optimization():
             x = np.arange(0, 24, 1)
             plt.xticks(x)
             plt.axhline(0, color='black')
+            env = 3
             # Gains:
             for channel in range(24):
-                std_rel =  float(config_stds[f'{channel}'][names[var]+f'_GAIN_{channel}']) / float(config_vals[f'{channel}'][names[var]+f'_GAIN_{channel}']) * 100*3
+                std_rel =  float(config_stds[f'{channel}'][names[var]+f'_GAIN_{channel}']) / float(config_vals[f'{channel}'][names[var]+f'_GAIN_{channel}']) * 100*env
                 if channel == 0:
-                    plt.bar(channel + 0.5, 2 * std_rel, bottom=-std_rel, width=1, alpha=0.5, color='grey', label='$3\sigma$')
+                    plt.bar(channel + 0.5, 2 * std_rel, bottom=-std_rel, width=1, alpha=0.5, color='grey', label=f'${env}\sigma$ range')
                 else:
                     plt.bar(channel + 0.5, 2 * std_rel, bottom=-std_rel, width=1, alpha=0.5, color='grey')
                 for cal in range(5):
@@ -155,7 +156,7 @@ def calibration_optimization():
                         plt.bar(channel+0.2*cal+0.1,data[channel*10+var*2,cal],label=f'{calibrations[cal]}',width=0.2, color=colors[cal],alpha = 1)
                     else:
                         plt.bar(channel + 0.2 * cal+0.1, data[channel * 10 + var * 2, cal], width=0.2, color=colors[cal],alpha = 1)
-            plt.title(names[var] + ' GAIN')
+            plt.title(names[var].replace("_"," ") + ' GAIN')
             plt.ylabel('Relative difference in %'), plt.xlabel('Channels')
             plt.legend()
             plt.tight_layout()
@@ -170,9 +171,9 @@ def calibration_optimization():
             plt.axhline(0, color='black')
             # Gains:
             for channel in range(24):
-                diff_abs = float(config_stds[f'{channel}'][names[var] + f'_OFFSET_{channel}'])*3
+                diff_abs = float(config_stds[f'{channel}'][names[var] + f'_OFFSET_{channel}'])*env
                 if channel == 0:
-                    plt.bar(channel + 0.5, 2 * diff_abs, bottom=-diff_abs, width=1, alpha=0.5, color='grey',label='$3\sigma$')
+                    plt.bar(channel + 0.5, 2 * diff_abs, bottom=-diff_abs, width=1, alpha=0.5, color='grey',label=f'${env}\sigma$ range')
                 else:
                     plt.bar(channel + 0.5, 2 * diff_abs, bottom=-diff_abs, width=1, alpha=0.5, color='grey')
                 for cal in range(5):
@@ -180,7 +181,7 @@ def calibration_optimization():
                         plt.bar(channel+0.2*cal+0.1,data[channel*10+var*2+1,cal],label=f'{calibrations[cal]}',width=0.2, color=colors[cal],alpha = 1)
                     else:
                         plt.bar(channel + 0.2 * cal+0.1, data[channel * 10 + var * 2+1, cal], width=0.2, color=colors[cal],alpha = 1)
-            plt.title(names[var] + ' Offset')
+            plt.title(names[var].replace("_"," ") + ' OFFSET')
             plt.ylabel('Absolute difference'), plt.xlabel('Channels')
             plt.legend()
             plt.tight_layout()

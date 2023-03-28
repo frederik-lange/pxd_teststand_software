@@ -5,13 +5,13 @@
 '''
 from Calibration_script import main
 from Calibration_script import fit
-import validation
 import numpy as np
 import scipy.optimize as so
 import scipy.stats as ss
 import matplotlib.pyplot as plt
 import os
 import configparser
+import csv
 
 path = '../data/example'
 if not os.path.exists(os.path.join(path,'statistics')):
@@ -190,7 +190,76 @@ def outliers_old(x, y):
         #cut to  2 sigma
         cut[np.logical_or((slopes >= 2 * std + mean), (slopes <= mean - 2 * std))] = True
 
-    return x[~cut], y[~cut],x[cut], y[cut]
+    return x[~cut], y[~cut],x[cut], y[cut], cut
+
+def outliers_new(x, y, x_err, y_err):
+    # range criteria (remove saturation)
+    ymax, ymin = np.amax(y), np.amin(y)
+    range = ymax - ymin
+    upper_limit = ymin + 0.99 * range
+    lower_limit = ymin + 0.01 * range
+    cut1 = y > upper_limit
+    cut2 = y < lower_limit
+    cut = cut1 + cut2
+
+    # use gradient of y values to fit only linear values (remove scattering values)
+    # gradient gives the "slope", twice gradient gives "curvature"
+    grad = np.gradient(y)
+    grad2 = np.gradient(grad)
+    mean_grad = np.mean(grad[~cut])
+    mean_grad2 = np.mean(grad2[~cut])
+    median_grad = np.median(grad[~cut])
+    median_grad2 = np.median(grad2[~cut])
+    help_cut1 = grad2 > 10.0
+    help_cut2 = grad2 < - 10.0
+    help_cut = help_cut1 + help_cut2 + cut
+
+    # remove false positive points of gradient criteria
+    help_cut1 = np.abs(grad) > 1.2 * np.abs(mean_grad)
+    help_cut2 = np.abs(grad) < 0.8 * np.abs(mean_grad)
+    help_cut = help_cut + help_cut1 + help_cut2
+
+    # if all points were removed due to outliers, use median instead of mean
+    if x[~help_cut].size <= 1:
+        help_cut1 = grad2 > 10.0
+        help_cut2 = grad2 < - 10.0
+        help_cut = help_cut1 + help_cut2 + cut
+        # remove false positive points of gradient criteria
+        help_cut1 = np.abs(grad) > 1.2 * np.abs(median_grad)
+        help_cut2 = np.abs(grad) < 0.8 * np.abs(median_grad)
+        help_cut = help_cut + help_cut1 + help_cut2
+
+    if x[~help_cut].size >= 2:
+        # auxiliary fit
+        # Saturation got cut, considers all values along a line
+        popt, pcov = so.curve_fit(lin, x[~help_cut], y[~help_cut], sigma=y_err[~help_cut], absolute_sigma=True)
+        m, n = popt[0], popt[1]
+
+        # Fit with ODR
+        popt_odr, perr_odr, red_chi_2 = fit.fit_odr(fit_func=lin, x=x[~help_cut], y=y[~help_cut],
+                                                    x_err=x_err[~help_cut], y_err=y_err[~help_cut],
+                                                    p0=[popt[0], popt[1]])
+        m, n = popt_odr[0], popt_odr[1]
+
+        # cut outliers
+        r = y - (m * x + n)
+        std_r = np.std(r[~cut])
+        mean_r = np.mean(r[~cut])
+        # use abs of residuals because res are distributed around zero -> mean is useless
+        r = np.abs(r)
+        # cut on this
+        cut1 = np.abs(r) > 2 * np.abs(np.mean(r))
+        cut = cut + cut1
+
+        # Final Fit
+        popt_odr, perr_odr, red_chi_2 = fit.fit_odr(fit_func=lin, x=x[~cut], y=y[~cut], x_err=x_err[~cut],
+                                                    y_err=y_err[~cut], p0=[popt[0], popt[1]])
+        m, n = popt_odr[0], popt_odr[1]
+        #print(f"Chi square: {red_chi_2}")
+        return x[~cut], y[~cut], x[cut], y[cut], cut
+    else:
+        print('Too many values cut!')
+        return x[~help_cut], y[~help_cut], x, y, np.ones_like(x, dtype=bool)
 
 def outliers():
     for channel in [5,21]:
@@ -210,7 +279,6 @@ def outliers():
         columns_IlimitvsI = ["$I_{lim,DAC}$ [mV]", "$I_{lim,SMU}$ [mA]", "unknown 3", "unknown 4", "StatBit"]
         data_IlimitvsI = main.read_data(path_IlimitvsI, columns_IlimitvsI)
 
-        # For Current
         x_0, y_0, l_0 = main.get_and_prepare(data_UvsU, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]')
         x_1, y_1, l_1 = main.get_and_prepare(data_UvsU, '$U_{out}$ [mV]', '$U_{regulator}$ [mV]')
         x_2, y_2, l_2 = main.get_and_prepare(data_UvsU, '$U_{out}$ [mV]', '$U_{load}$ [mV]')
@@ -222,16 +290,27 @@ def outliers():
         if channel == 21:
             x_0, y_0, x_cut_0, y_cut_0, m, n = cut_outliers(x_0, y_0,channel)
 
+def get_chisquare(x,y,dx,dy):
+    # p0 estimator
+    popt, pcov = so.curve_fit(lin, x, y, sigma=dy, absolute_sigma=True)
+
+    # (m, b), (SSE,), *_ = np.polyfit(x, y, deg=1, full=True)
+    popt, perr, red_chi_2 = fit.fit_odr(fit_func=lin,x=x,y=y,x_err=dx,y_err=dy,p0=[popt[0], popt[1]])
+    return red_chi_2
 
 def compare_chi():
     # compare chi square values of the different methods
+    chi_squares_new = np.zeros(120)
+    chi_squares_new = np.reshape(chi_squares_new,(24,5))
+    chi_squares_old = np.zeros(120)
+    chi_squares_old = np.reshape(chi_squares_old, (24, 5))
     config_root = configparser.ConfigParser()
     config_root.read('../data/example/constants_from_root.ini')
     path = '../data/example'
     vars = ['DAC_VOLTAGE_GAIN', 'DAC_VOLTAGE_OFFSET', 'ADC_U_LOAD_GAIN', 'ADC_U_LOAD_OFFSET', 'ADC_U_REGULATOR_GAIN',
             'ADC_U_REGULATOR_OFFSET',
             'ADC_I_MON_GAIN', 'ADC_I_MON_OFFSET', 'DAC_CURRENT_GAIN', 'DAC_CURRENT_OFFSET']
-    for channel in [5,21]:
+    for channel in range(24):
         print(f'Channel {channel}')
         path_UvsU = os.path.join(path, f'Channel_{channel}_U_vs_U.dat')
         columns_UvsU = ["$U_{DAC}$ [mV]", "$U_{out}$ [mV]", "$U_{regulator}$ [mV]", "$U_{load}$ [mV]", "unknown 5",
@@ -246,6 +325,8 @@ def compare_chi():
         columns_IlimitvsI = ["$I_{lim,DAC}$ [mV]", "$I_{lim,SMU}$ [mA]", "unknown 3", "unknown 4", "StatBit"]
         data_IlimitvsI = main.read_data(path_IlimitvsI, columns_IlimitvsI)
 
+
+        # for new method
         x_0, y_0, l_0 = main.get_and_prepare(data_UvsU, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]')
         x_1, y_1, l_1 = main.get_and_prepare(data_UvsU, '$U_{out}$ [mV]', '$U_{regulator}$ [mV]')
         x_2, y_2, l_2 = main.get_and_prepare(data_UvsU, '$U_{out}$ [mV]', '$U_{load}$ [mV]')
@@ -263,6 +344,52 @@ def compare_chi():
         x_err_4 = np.ones_like(x_4) * 3.05
         y_err_4 = main.SMU_I_error(y_4, channel)
 
+        x_0,y_0,x_cut_0,y_cut_0,cut_0 = outliers_new(x_0,y_0,x_err_0,y_err_0)
+        x_1, y_1, x_cut_1, y_cut_1, cut_1 = outliers_new(x_1, y_1, x_err_1, y_err_1)
+        x_2, y_2, x_cut_2, y_cut_2, cut_2 = outliers_new(x_2, y_2, x_err_2, y_err_2)
+        x_3, y_3, x_cut_3, y_cut_3, cut_3 = outliers_new(x_3, y_3, x_err_3, y_err_3)
+        x_4, y_4, x_cut_4, y_cut_4, cut_4 = outliers_new(x_4, y_4, x_err_4, y_err_4)
+
+        chi_squares_new[channel,0] = get_chisquare(x_0,y_0,x_err_0[~cut_0],y_err_0[~cut_0])
+        chi_squares_new[channel,1] = get_chisquare(x_1, y_1, x_err_1[~cut_1], y_err_1[~cut_1])
+        chi_squares_new[channel,2] = get_chisquare(x_2, y_2, x_err_2[~cut_2], y_err_2[~cut_2])
+        chi_squares_new[channel,3] = get_chisquare(x_3, y_3, x_err_3[~cut_3], y_err_3[~cut_3])
+        chi_squares_new[channel,4] = get_chisquare(x_4, y_4, x_err_4[~cut_4], y_err_4[~cut_4])
+
+
+        # for old method
+        x_0, y_0, l_0 = main.get_and_prepare(data_UvsU, '$U_{DAC}$ [mV]', '$U_{out}$ [mV]')
+        x_1, y_1, l_1 = main.get_and_prepare(data_UvsU, '$U_{out}$ [mV]', '$U_{regulator}$ [mV]')
+        x_2, y_2, l_2 = main.get_and_prepare(data_UvsU, '$U_{out}$ [mV]', '$U_{load}$ [mV]')
+        x_3, y_3, l_3 = main.get_and_prepare(data_IvsI, '$I_{out(SMU)}$ [mA]', '$I_{outMon}$ [mV]')
+        x_4, y_4, l_4 = main.get_and_prepare(data_IlimitvsI, '$I_{lim,DAC}$ [mV]', '$I_{lim,SMU}$ [mA]')
+
+        x_0, y_0, x_cut_0, y_cut_0, cut_0 = outliers_old(x_0, y_0)
+        x_1, y_1, x_cut_1, y_cut_1, cut_1 = outliers_old(x_1, y_1)
+        x_2, y_2, x_cut_2, y_cut_2, cut_2 = outliers_old(x_2, y_2)
+        x_3, y_3, x_cut_3, y_cut_3, cut_3 = outliers_old(x_3, y_3)
+        x_4, y_4, x_cut_4, y_cut_4, cut_4 = outliers_old(x_4, y_4)
+
+        chi_squares_old[channel, 0] = get_chisquare(x_0, y_0, x_err_0[~cut_0], y_err_0[~cut_0])
+        chi_squares_old[channel, 1] = get_chisquare(x_1, y_1, x_err_1[~cut_1], y_err_1[~cut_1])
+        chi_squares_old[channel, 2] = get_chisquare(x_2, y_2, x_err_2[~cut_2], y_err_2[~cut_2])
+        chi_squares_old[channel, 3] = get_chisquare(x_3, y_3, x_err_3[~cut_3], y_err_3[~cut_3])
+        chi_squares_old[channel, 4] = get_chisquare(x_4, y_4, x_err_4[~cut_4], y_err_4[~cut_4])
+
+    print(chi_squares_old)
+    print(chi_squares_new)
+    with open('../data/Chi_square_example.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Channel','old','new','old','new','old','new','old','new','old','new'])
+        for n in range(24):
+            list = [n]
+            for v in range(5):
+                list.append((chi_squares_old[n,v]))
+                list.append((chi_squares_new[n,v]))
+            print(list)
+            writer.writerow(list)
+
+    '''
         constants = np.zeros(10)
         for n in range(10):
             constants[n] = float(config_root[f'{channel}'][f'{vars[n]}'])
@@ -300,6 +427,7 @@ def compare_chi():
         #print(y_3 - y_fit_3)
         chi_sq_3 = np.sum((y_3 - y_fit_3) ** 2 / y_err_3 ** 2) / (len(y_3)-2)
         print(chi_sq_3)
+        '''
 
-#compare_chi()
-outliers()
+#outliers()
+compare_chi()

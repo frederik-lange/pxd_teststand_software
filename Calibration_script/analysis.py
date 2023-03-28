@@ -39,7 +39,7 @@ def check_all():
     config_ini = configparser.ConfigParser()
     configPath.read('path.ini')
     scans, successes = 0,0
-    for i in range(20,110):
+    for i in range(105,110):
         print(f"Power supply {i}")
         for root, dirs, files in os.walk(f'../data/CalibrationData/ps{i}'):
             for dir in dirs:
@@ -327,6 +327,7 @@ def calc_std(config,group,name,ASIC,writer):
 
 def calculate_valid_constants():
     # calculate mean and std via arithmetic mean of database.ini ranges
+    # not exact. Better calculate directly from database, this is done in calculate_range_total
     config_mean, config_std = configparser.ConfigParser(), configparser.ConfigParser()
     config_mean.read('./../data/database.ini')
     config_std.read('./../data/database_std.ini')
@@ -587,7 +588,7 @@ def compare_values_to_new_range():
             plt.close()
 
 if __name__ == '__main__':
-    #check_all()
+    check_all()
     ######
     # Note: 60 out of 201 calibrations are successful with the new range!
     ######
@@ -595,7 +596,7 @@ if __name__ == '__main__':
     #boxplot_per_channel()
     #channel_grouping()
     #channel_grouping_by_board()
-    grouping_boxplots()
+    #grouping_boxplots()
     #calculate_valid_constants()
     #final_ranges_to_ini()
     #constants_variance_grouped()
