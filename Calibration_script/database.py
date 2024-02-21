@@ -334,16 +334,20 @@ def compare_distributions():
                 min = np.min([min1, min2])
                 diff1 = max1-min1
                 diff2 = max2-min2
-                if diff1 > 100:
-                    diff1 = 100
+                if diff1 > 8:
+                    diff1 = 8
                 if diff1 < 1:
                     diff1 = 1
-                if diff2 > 100:
-                    diff2 = 100
+                if diff2 > 8:
+                    diff2 = 8
                 if diff2 < 1:
                     diff2 = 1
-                histo2 = plt.hist(data2[names[4 + channel * 10 + n]][mask2], bins=diff2, color='grey')
-                histo1 = plt.hist(data1[names[4+channel*10+n]][mask1],bins=diff1, color='blue')
+                print("binsize diff1", diff1)
+                print("binsize diff2", diff2)
+                histo2 = plt.hist(data2[names[4 + channel * 10 + n]][mask2], bins=diff2, color='#909085', alpha=0.9)
+                histo1 = plt.hist(data1[names[4+channel*10+n]][mask1],bins=diff1, color='#fcba00', alpha=0.6)
+                histo2_data = np.histogram(data2[names[4 + channel * 10 + n]][mask2], bins=diff2)
+                histo1_data = np.histogram(data1[names[4+channel*10+n]][mask1], bins=diff1)
 
                 #print(histo[0], "\n", histo[1])
                 #plt.axvline(med1, color='blue', label='mean')
@@ -352,19 +356,23 @@ def compare_distributions():
                 #plt.axvline(med + std, color='green')
                 #plt.axvline(med - 2*std, color='yellow', label='$2 \sigma$')
                 #plt.axvline(med + 2*std, color='yellow',)
-                #plt.axvline(med + 3*std, color='blue', label='$3 \sigma$')
-                #plt.axvline(med - 3*std,color='blue')
+                plt.axvline(med2 + 3*std2, color='#004e9f', label='$3 \sigma$')
+                plt.axvline(med2 - 3*std2,color='#004e9f')
                 #plt.axvline(med + 4*std, color='red', label='$4 \sigma$')
                 #plt.axvline(med - 4*std, color='red')
                 x = np.arange(min,max,0.1)
                 try:
-                    popt1, pcov1 = so.curve_fit(gauss, (histo1[1][1:]+histo1[1][:-1])/2, histo1[0], bounds=([med1-1*std1,0,0],[med1+1*std1,1*std1,1*len(data1[names[2+channel*10+n]])]))
-                    popt2, pcov2 = so.curve_fit(gauss, (histo2[1][1:] + histo2[1][:-1]) / 2, histo2[0], bounds=(
-                    [med2 - 1 * std2, 0, 0], [med2 + 1 * std2, 1 * std2, 1 * len(data2[names[2 + channel * 10 + n]])]))
-                #    #print(popt)
-                    x = np.arange(med1-3*std1, med1+3*std1,0.1)
-                    plt.plot(x, gauss(x,*popt1),label='fitted gauss KEK PSs')
-                    plt.plot(x, gauss(x,*popt2),label='fitted gauss lab PSs', color='black')
+                    print(histo1[0])
+                    print(histo1[1])
+                    popt1, pcov1 = so.curve_fit(gauss, (histo1[1][1:]+histo1[1][:-1])/2, histo1[0], p0=[med1,std1,5], bounds=([med1-5*std1,0,0],[med1+5*std1,5*std1,1*len(data1[names[2+channel*10+n]])]))
+                    popt2, pcov2 = so.curve_fit(gauss, (histo2[1][1:] + histo2[1][:-1]) / 2, histo2[0], p0=[med2,std2,5], bounds=(
+                    [med2 - 5 * std2, 0, 0], [med2 + 5 * std2, 5 * std2, 1 * len(data2[names[2 + channel * 10 + n]])]))
+                #   print(popt)
+                    x = np.arange(med1-5*std1, med1+5*std1,0.1)
+                    plt.plot(x, gauss(x,*popt1),label=f'fitted gauss KEK PSs mu={round(popt1[0],2)}, sigma2={round(popt1[1],2)}', color='#fcba00')
+                    plt.plot(x, gauss(x,*popt2),label=f'fitted gauss lab PSs mu={round(popt2[0],2)}, sigma2={round(popt2[1],2)}', color='#909085')
+                    #empty plot for extra label
+                    plt.plot([], [], '', label=f'{diff1} bins, {diff2} bins')
                 except (RuntimeError, ValueError):
                     print("Gauss function could not be fitted!")
 
