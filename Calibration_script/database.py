@@ -16,8 +16,10 @@ from scipy import stats
 import scipy.optimize as so
 
 #database = 'database'
-database = 'PS_105_constants'
-path = '../data/CalibrationData/ps105'
+database = 'KEK_constants'
+database1 = 'KEK_constants'
+database2 = 'database'
+path = '../../data/calibration_kek'
 #ps = 'unknown'
 
 names = ["Unit","Date","validated","used_for_range"]
@@ -50,7 +52,7 @@ def scan_and_add(path, ps):
         n, invalid = 0, 0
         for root, dirs, files in os.walk(path):
             for file in files:
-                if file.endswith('constants.ini'):
+                if file.endswith('kek.ini'):
                     path_file = os.path.join(root,file)
                     n += 1
                     try:
@@ -98,7 +100,7 @@ def fill():
     initialize()
     # go through all possible ps folders
     for i in range(21,110):
-        path_ps = os.path.join(path,f"ps{i}")
+        path_ps = os.path.join(path,f"{i}")
         if os.path.exists(path_ps):
             ps = i
             print(f"PS number {i}")
@@ -236,14 +238,14 @@ def normal_distribution():
                 histo = plt.hist(data[names[4+channel*10+n]][mask],bins=diff)
                 #print(histo[0], "\n", histo[1])
                 plt.axvline(med, color='black', label='mean')
-                plt.axvline(med - std, color='green', label='$1 \sigma$')
-                plt.axvline(med + std, color='green')
-                plt.axvline(med - 2*std, color='yellow', label='$2 \sigma$')
-                plt.axvline(med + 2*std, color='yellow',)
-                plt.axvline(med + 3*std, color='blue', label='$3 \sigma$')
-                plt.axvline(med - 3*std,color='blue')
-                plt.axvline(med + 4*std, color='red', label='$4 \sigma$')
-                plt.axvline(med - 4*std, color='red')
+                #plt.axvline(med - std, color='green', label='$1 \sigma$')
+                #plt.axvline(med + std, color='green')
+                #plt.axvline(med - 2*std, color='yellow', label='$2 \sigma$')
+                #plt.axvline(med + 2*std, color='yellow',)
+                #plt.axvline(med + 3*std, color='blue', label='$3 \sigma$')
+                #plt.axvline(med - 3*std,color='blue')
+                #plt.axvline(med + 4*std, color='red', label='$4 \sigma$')
+                #plt.axvline(med - 4*std, color='red')
                 x = np.arange(min,max,0.1)
                 try:
                     popt, pcov = so.curve_fit(gauss, (histo[1][1:]+histo[1][:-1])/2, histo[0], bounds=([med-1*std,0,0],[med+1*std,1*std,1*len(data[names[2+channel*10+n]])]))
@@ -279,15 +281,107 @@ def normal_distribution():
                 pdf.savefig()
                 plt.close()
         print(f'Normally distributed values: \n1 sigma: {count_1} of {count_tot_1}\n2 sigma: {count_2} of {count_tot_2}\n3 sigma: {count_3} of {count_tot_3}\n4 sigma: {count_4} of {count_tot_4}')
+def compare_distributions():
+    data1 = pd.read_csv(f'./../data/{database1}.csv')
+    data2 = pd.read_csv(f'./../data/{database2}.csv')
+    config_vals1 = configparser.ConfigParser()
+    config_vals1.read(f'../data/{database1}.ini')
+    config_errs1 = configparser.ConfigParser()
+    config_errs1.read(f'../data/{database1}_std.ini')
+    config_vals2 = configparser.ConfigParser()
+    config_vals2.read(f'../data/{database2}.ini')
+    config_errs2 = configparser.ConfigParser()
+    config_errs2.read(f'../data/{database2}_std.ini')
+    #print(data.shape)
+    with PdfPages(f'../data/Normal_Distribution_{database1}_{database2}_comparison') as pdf:
+        count_1, count_tot_1, count_2, count_tot_2, count_3, count_tot_3, count_4, count_tot_4 = 0, 0, 0, 0, 0, 0, 0, 0
+        for channel in range(24):
+            print(f'Plotting channel {channel}...')
+            for n in range(10):
+                plt.subplots()
+                plt.xlabel('Values')
+                plt.ylabel('Counts')
+                plt.title(f'Channel {channel}: {names[4 + channel * 10 + n]}')
+                #print(names[2+channel*10+n])
+                if False:
+                    for x in range(4, len(names)):
+                        if x < 104:
+                            names[n] = str(names[n])[:-2]
+                        else:
+                            names[n] = str(names[n])[:-3]
+
+                med1, std1 = float(config_vals1[f'{channel}'][names[4+channel*10+n]]), float(config_errs1[f'{channel}'][names[4+channel*10+n]])
+                med2, std2 = float(config_vals2[f'{channel}'][names[4 + channel * 10 + n]]), float(
+                    config_errs2[f'{channel}'][names[4 + channel * 10 + n]])
+                #mask = np.full(len(data1[names[2+channel*10+n]]), True)
+                if channel == 13 and (n == 6 or n == 7):
+                    mask1 = (data1['ADC_I_MON_GAIN_13'] > -1500) & (data1['used_for_range'] == 'yes')
+                    mask2 = (data2['ADC_I_MON_GAIN_13'] > -1500) & (data2['used_for_range'] == 'yes')
+                elif channel == 13 and (n==8 or n == 9):
+                    mask1 = (data1['DAC_CURRENT_GAIN_13'] > 90000) & (data1['used_for_range'] == 'yes')
+                    mask2 = (data2['DAC_CURRENT_GAIN_13'] > 90000) & (data2['used_for_range'] == 'yes')
+                elif channel == 15 and (n==6 or n == 7):
+                    mask1 = (data1['ADC_I_MON_GAIN_15'] > -500000) & (data1['used_for_range'] == 'yes')
+                    mask2 = (data2['ADC_I_MON_GAIN_15'] > -500000) & (data2['used_for_range'] == 'yes')
+                else:
+                    mask1 = data1['used_for_range'] == 'yes'
+                    mask2 = data2['used_for_range'] == 'yes'
+                max1 = int(np.max(data1[names[4+channel*10+n]][mask1]))
+                min1 = int(np.min(data1[names[4+channel*10+n]][mask1]))
+                max2 = int(np.max(data2[names[4 + channel * 10 + n]][mask2]))
+                min2 = int(np.min(data2[names[4 + channel * 10 + n]][mask2]))
+                max = np.max([max1, max2])
+                min = np.min([min1, min2])
+                diff1 = max1-min1
+                diff2 = max2-min2
+                if diff1 > 100:
+                    diff1 = 100
+                if diff1 < 1:
+                    diff1 = 1
+                if diff2 > 100:
+                    diff2 = 100
+                if diff2 < 1:
+                    diff2 = 1
+                histo2 = plt.hist(data2[names[4 + channel * 10 + n]][mask2], bins=diff2, color='grey')
+                histo1 = plt.hist(data1[names[4+channel*10+n]][mask1],bins=diff1, color='blue')
+
+                #print(histo[0], "\n", histo[1])
+                #plt.axvline(med1, color='blue', label='mean')
+                #plt.axvline(med2, color='grey', label='mean')
+                #plt.axvline(med - std, color='green', label='$1 \sigma$')
+                #plt.axvline(med + std, color='green')
+                #plt.axvline(med - 2*std, color='yellow', label='$2 \sigma$')
+                #plt.axvline(med + 2*std, color='yellow',)
+                #plt.axvline(med + 3*std, color='blue', label='$3 \sigma$')
+                #plt.axvline(med - 3*std,color='blue')
+                #plt.axvline(med + 4*std, color='red', label='$4 \sigma$')
+                #plt.axvline(med - 4*std, color='red')
+                x = np.arange(min,max,0.1)
+                try:
+                    popt1, pcov1 = so.curve_fit(gauss, (histo1[1][1:]+histo1[1][:-1])/2, histo1[0], bounds=([med1-1*std1,0,0],[med1+1*std1,1*std1,1*len(data1[names[2+channel*10+n]])]))
+                    popt2, pcov2 = so.curve_fit(gauss, (histo2[1][1:] + histo2[1][:-1]) / 2, histo2[0], bounds=(
+                    [med2 - 1 * std2, 0, 0], [med2 + 1 * std2, 1 * std2, 1 * len(data2[names[2 + channel * 10 + n]])]))
+                #    #print(popt)
+                    x = np.arange(med1-3*std1, med1+3*std1,0.1)
+                    plt.plot(x, gauss(x,*popt1),label='fitted gauss KEK PSs')
+                    plt.plot(x, gauss(x,*popt2),label='fitted gauss lab PSs', color='black')
+                except (RuntimeError, ValueError):
+                    print("Gauss function could not be fitted!")
+
+                plt.legend()
+
+                pdf.savefig()
+                plt.close()
 
 def main():
     # warning! unse fill() only for full database!
     #fill()
-    #scan_and_add(path,105)
+    #scan_and_add(path,82)
     #define_range()
     #update_range()
     #normal_distribution()
-    ratio_mean_std()
+    compare_distributions()
+    #ratio_mean_std()
     '''
     source = '/home/silab44/pxd_teststand_software_git/pxd_teststand_software/OldCallibrations'
     dest = '/home/silab44/pxd_teststand_software_frederik/data/CalibrationData'
